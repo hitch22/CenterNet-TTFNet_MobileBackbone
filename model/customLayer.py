@@ -97,19 +97,23 @@ def _DeptwiseConv(inputs, kernel_size=3, strides=2, padding='same', dilation_rat
 
     return x
 
-def _SeparableConv(inputs, filters, kernel_size=3, strides=2, padding='same', use_bias=False, normalization=BatchNormalization, activation=ReLU, prefix=None, **conf_dict):
+def _SeparableConv(inputs, filters, kernel_size=3, strides=2, padding='same', normalization=BatchNormalization, activation=ReLU, prefix=None, **conf_dict):
+    conf_dict_inner = conf_dict.copy()
+
+    if 'kernel_initializer' in  conf_dict_inner.keys():
+        conf_dict_inner['pointwise_initializer'] = conf_dict_inner['kernel_initializer']
+        conf_dict_inner['depthwise_initializer'] = conf_dict_inner['kernel_initializer']
+        conf_dict_inner.pop('kernel_initializer')
+    if 'kernel_regularizer' in  conf_dict_inner.keys():
+        conf_dict_inner['pointwise_regularizer'] = conf_dict_inner['kernel_regularizer']
+        conf_dict_inner.pop('kernel_regularizer')
+
     x=SeparableConv2D(filters=filters,
             kernel_size=kernel_size,
             strides=strides,
             padding=padding,
-            use_bias=use_bias,
-            depthwise_initializer=tf.initializers.RandomNormal(mean=0.0, stddev=0.03),
-            #depthwise_regularizer=tf.keras.regularizers.l2(conf_dict['reg']),
-            pointwise_initializer=tf.initializers.RandomNormal(mean=0.0, stddev=0.03),
-            pointwise_regularizer=tf.keras.regularizers.l2(conf_dict['reg']),
-            trainable=conf_dict['trainable'],
-            bias_initializer=conf_dict['bias_initializer'] if 'bias_initializer'in conf_dict.keys() else 'zeros',
-            name=prefix+'Conv')(inputs)
+            **conf_dict_inner,
+            name=prefix+'SepConv')(inputs)
 
     if normalization is not None:
         x=normalization(trainable=conf_dict['trainable'], name=prefix+'BN')(x)

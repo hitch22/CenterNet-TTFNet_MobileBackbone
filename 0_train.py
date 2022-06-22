@@ -45,9 +45,9 @@ def main(_argv):
     
     logging.info('Training model: {}'.format(FLAGS.model))
     if FLAGS.model == 'MobileNetV3':
-        modelName = "MobileNetV3_FPN_CenterNet"
+        modelName = "MobileNetV3_FPN_TTFNet"
     elif FLAGS.model == 'MobileDet':
-        modelName = "MobileDet_FPN_CenterNet"
+        modelName = "MobileDet_FPN_TTFNet"
     
     with open(os.path.join("model/0_Config", modelName+".json"), "r") as config_file:
         config = json.load(config_file)
@@ -69,9 +69,9 @@ def main(_argv):
     model = ModelBuilder(config = config)
     #model.load_weights("logs/_epoch600_mAP0.132").expect_partial()
 
-    #optimizer = GCSGD(momentum=0.9, nesterov=False)
+    optimizer = GCSGD(momentum=0.9, nesterov=False)
     #optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
-    optimizer = tf.keras.optimizers.Adam()
+    #optimizer = tf.keras.optimizers.Adam()
 
     model.summary(expand_nested=True, show_trainable=True)
     model.compile(loss=CenterNetLoss(config), optimizer=optimizer, weighted_metrics=[])

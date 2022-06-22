@@ -4,7 +4,8 @@ import numpy as np
 
 _policy = tf.keras.mixed_precision.global_policy()
 
-def CalculateIOU(b1, b2):
+@tf.function()
+def CalculateIOU(b1, b2, mode="IOU"):
     '''
         input_format y1 x1 y2 x2
     '''
@@ -43,11 +44,16 @@ def CalculateIOU(b1, b2):
 
     S = 1 - iou
     alpha = v/(S + v + 1e-8)
+    
+    mode = mode.upper()
+    if mode == "IOU":
+        return iou
+    elif mode == "DIOU":
+        return iou - u
+    elif mode == "CIOU":
+        return tf.clip_by_value(iou - (u + alpha * ar), -1.0, 1.0)
 
-    cious = tf.clip_by_value(iou - (u + alpha * ar), -1.0, 1.0)
-    diou = iou - u
-    return 1.0 - diou
-
+@tf.function()
 def CalculateIOA(boxes1, boxes2):
     boxes1_corners = boxes1
     boxes2_corners = boxes2
@@ -64,6 +70,7 @@ def CalculateIOA(boxes1, boxes2):
     return tf.math.divide_no_nan(intersection_area, boxes2_area)
 
 ################################## from TFOD
+@tf.function()
 def scale(boxlist, y_scale, x_scale):
     y_scale = tf.cast(y_scale, tf.float32)
     x_scale = tf.cast(x_scale, tf.float32)

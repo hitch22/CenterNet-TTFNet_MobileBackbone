@@ -35,7 +35,7 @@ class IOU(tf.losses.Loss):
         bbox_gt = tf.where(pos_mask[..., tf.newaxis], bbox_gt, 0.0)
         wh_weight = tf.where(pos_mask, wh_weight, 0.0)
 
-        loss = CalculateIOU(bbox_gt, bbox_pred) # b h w
+        loss = 1 - CalculateIOU(bbox_gt, bbox_pred, mode="diou")
         loss = loss*wh_weight
 
         return tf.reduce_sum(loss)/tf.reduce_sum(wh_weight)
@@ -46,19 +46,19 @@ class HeatmapFocal(tf.losses.Loss):
         self._alpha = alpha
         self._gamma = gamma
 
-    def call(self, hm_true, hm_pred): # b h w c        
+    def call(self, hm_true, hm_pred):        
         hm_pred = tf.clip_by_value(tf.nn.sigmoid(hm_pred), 1e-4, 1.0-1e-4)
         
-        pos_mask = tf.equal(hm_true, 1.0)
-        '''loss = -tf.where(pos_mask, \
+        pos_mask = tf.abs(hm_true - 1.0) < 1e-4
+        loss = -tf.where(pos_mask, \
             tf.math.pow(1.0 - hm_pred, self._alpha)*tf.math.log(hm_pred), \
             tf.math.pow(hm_pred, self._alpha)*tf.math.log(1.0 - hm_pred)*tf.math.pow(1.0 - hm_true, self._gamma)
             )
         loss = tf.reduce_sum(loss)
         normalizer = tf.maximum(tf.reduce_sum(tf.cast(pos_mask, tf.float32)), 1.0)
-        loss = loss/normalizer'''
+        loss = loss/normalizer
 
-        pos_loss = -tf.math.pow(1.0 - hm_pred, self._alpha)*tf.math.log(hm_pred)
+        '''pos_loss = -tf.math.pow(1.0 - hm_pred, self._alpha)*tf.math.log(hm_pred)
         neg_loss = -tf.math.pow(hm_pred, self._alpha)*tf.math.log(1.0 - hm_pred)*tf.math.pow(1.0 - hm_true, self._gamma)
 
         pos_loss = tf.where(pos_mask, pos_loss, 0.0)
@@ -66,9 +66,9 @@ class HeatmapFocal(tf.losses.Loss):
 
         pos_loss = tf.reduce_sum(pos_loss)
         neg_loss = tf.reduce_sum(neg_loss)
-        num_pos = tf.reduce_sum(tf.cast(pos_mask, tf.float32))
+        num_pos = tf.maximum(tf.reduce_sum(tf.cast(pos_mask, tf.float32)), 1.0)
 
-        loss = tf.cond(tf.greater(num_pos, 0), lambda: (pos_loss + neg_loss) / num_pos, lambda: neg_loss)
+        loss = tf.cond(tf.greater(num_pos, 0), lambda: (pos_loss + neg_loss) / num_pos, lambda: neg_loss)'''
         return loss
 
 class CenterNetLoss(tf.losses.Loss):

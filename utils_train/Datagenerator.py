@@ -32,20 +32,12 @@ class DatasetBuilder():
 
         if self.mode == 'train' or self.mode == 'bboxtest':
             image, bbox, classes  = randomCrop(image, bbox, classes, p = 0.75)
-            #image, bbox           = randomExpand(image, bbox, 0.5)
+            image, bbox           = randomExpand(image, bbox, 0.5)
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
             image, bbox           = flipHorizontal(image, bbox, p = 0.5)
             image                 = colorJitter(image, p = 1.0)
         else:
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
-
-        '''if len(bbox) > 0:
-            bbox = tf.concat([
-                (bbox[..., :2]+bbox[..., 2:])/2.0,
-                (bbox[..., 2:]-bbox[..., :2])],axis=-1)
-        else:
-            bbox = tf.zeros([1, 4], tf.float32)
-            classes = -1*tf.ones([1], tf.int32)'''
 
         if self.mode == 'train':
             return (image/127.5) -1.0,  self._label_encoder._encode_sample(bbox, classes)#, originalShape
