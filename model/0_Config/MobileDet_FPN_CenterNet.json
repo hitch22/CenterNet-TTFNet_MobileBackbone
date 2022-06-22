@@ -1,0 +1,52 @@
+{
+    "model_config":
+    {
+        "target_size": 320,
+        "feature_map_shapes": 80,
+
+        "backbone":
+        {
+            "name":"MobileDet",
+            "width_multiplier": 1.0,
+            "dropout":0.0,
+            "regularization":1e-5,
+            "isFreeze":false
+        },
+        "neck":
+        {   "name":"FPN",
+            "isLite": true,
+            "filters": [64, 32, 24, 24],
+            "regularization":1e-5,
+            "isFreeze":false
+        },
+        "head":
+        {
+            "name": "CenterNet",
+            "isLite": true,
+            "filters": 256,
+            "regularization":1e-5,
+            "isFreeze":false
+        } 
+    },
+
+    "training_config":
+    {
+        "HeatLoss": 
+        {
+            "LossFunction": "Focal",
+            "Alpha" : 2.0,
+            "Gamma" : 4.0,
+            "Weight" : 1.0
+        },
+
+        "BoxLoss": 
+        {
+            "LossFunction": "diou",
+            "Weight" : 5.0
+        },
+        "batch_size": 64,
+        "num_classes": 80,
+        "epochs": 300,
+        "initial_learning_rate": 1e-2
+    }
+} 
