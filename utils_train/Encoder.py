@@ -29,26 +29,6 @@ class LabelEncoder():
         return box_target, regW_target
 
     def _make_hm_target(self, hm, cls_ids):
-        unique_class = tf.unique_with_counts(cls_ids)
-        counts_cum=tf.math.cumsum(unique_class.count)
-        y=unique_class.y
-        
-        ################
-        hm2 = tf.zeros([self.FeatureMapResolution, self.FeatureMapResolution, 0])
-        hm2 = tf.concat([hm2, tf.zeros([self.FeatureMapResolution, self.FeatureMapResolution, y[0] if y[0] > 0 else 0])], -1)
-        for i in range(len(y)):
-            if i == 0:
-                hm2 = tf.concat([hm2, tf.reduce_max(hm[..., :counts_cum[i]], axis=-1, keepdims=True)], -1)
-            else:
-                hm2 = tf.concat([hm2, tf.reduce_max(hm[..., counts_cum[i-1]:counts_cum[i]], axis=-1, keepdims=True)], -1)
-            if i+1 < tf.shape(y):
-                hm2 = tf.concat([hm2, tf.zeros([self.FeatureMapResolution, self.FeatureMapResolution, y[i+1]-y[i]-1])], -1)
-            else:
-                hm2 = tf.concat([hm2, tf.zeros([self.FeatureMapResolution, self.FeatureMapResolution, self.classNum-y[-1]-1])], -1)
-        ################
-        return hm2
-
-    def _make_hm_target2(self, hm, cls_ids):
         channel_onehot = tf.one_hot(cls_ids, 80, axis=-1) #[n 80]
 
         reshaped_gaussian_map = tf.expand_dims(hm, axis=-1)
