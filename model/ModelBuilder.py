@@ -1,3 +1,4 @@
+import weakref
 import tensorflow as tf
 
 from model.BackBone.builder import BackBoneBuild
@@ -14,10 +15,7 @@ def get_scaled_losses(loss, regularization_losses=None):
 
 def reduce_losses(losses_dict):
     for key, value in losses_dict.items():
-        if  key != "RegL":
-            losses_dict[key] = tf.reduce_mean(value)
-        else:
-            losses_dict[key] = tf.math.add_n(value)
+        losses_dict[key] = tf.reduce_mean(value)
     return losses_dict
 
 def nms(heat, kernel=3):
@@ -27,9 +25,9 @@ def nms(heat, kernel=3):
     return heat_max_peak
 
 def decode(detections, k=100, relative=False):
+    heatmap=tf.nn.sigmoid(detections[..., :80])
     wh=detections[..., 80:84]
 
-    heatmap=tf.nn.sigmoid(detections[..., :80])
     heat_max_peak = nms(heatmap)
     batch, height, width, cat = tf.unstack(tf.shape(heatmap))
     
@@ -57,8 +55,6 @@ def decode(detections, k=100, relative=False):
     clf = tf.cast(tf.expand_dims(topk_clf, axis=-1), tf.float32)
     scores = tf.expand_dims(topk_scores, axis=-1)
 
-    # Especially in the early phases of the training, the values can be negative, Be careful.
-    # (The ways of solving this does not matter much ff the network is learning.)
     if False: #center
         wh = tf.math.abs(wh)
         ymin = ys - wh[..., 0:1] / 2
@@ -66,6 +62,8 @@ def decode(detections, k=100, relative=False):
         ymax = ys + wh[..., 0:1] / 2
         xmax = xs + wh[..., 1:2] / 2
     elif True:
+        #ys/=height
+        #xs/=width
         ymin = ys - wh[..., 0:1]
         xmin = xs - wh[..., 1:2]
         ymax = ys + wh[..., 2:3]
@@ -121,7 +119,7 @@ class ModelBuilder(tf.keras.Model):
                     'HeatL': heat_loss,
                     'BoxL': loc_loss,
                     'RegL': self.losses,
-                    'TotalL': _scaled_losses
+                    'TotalL': loss
                 }
         
         return reduce_losses(loss_dict)

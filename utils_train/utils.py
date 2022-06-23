@@ -4,7 +4,7 @@ import numpy as np
 
 _policy = tf.keras.mixed_precision.global_policy()
 
-@tf.function()
+@tf.function(jit_compile=True)
 def CalculateIOU(b1, b2, mode="IOU"):
     '''
         input_format y1 x1 y2 x2
@@ -33,25 +33,27 @@ def CalculateIOU(b1, b2, mode="IOU"):
     union_area = area_gt + area_pred - inter_intersection_area
 
     iou = tf.math.divide_no_nan(inter_intersection_area, union_area)
-    
+
+    mode = mode.upper()
+    if mode == "IOU":
+        return iou
+
     center_distance = tf.reduce_sum(tf.math.square(center_gt - center_pred), axis = -1)
     diagonal_distance =  tf.square(tf.linalg.norm(outer_intersection, axis = -1))
     u = tf.math.divide_no_nan(center_distance, diagonal_distance)
 
+    if mode == "DIOU":
+        return iou - u
+        
     arctanTerm = tf.math.atan(w_gt / (h_gt+1e-8)) - tf.math.atan(w_pred / (h_pred+1e-8))
     v = 4 / (np.pi ** 2) * tf.pow(arctanTerm, 2)
     ar = 8 / (np.pi ** 2) * arctanTerm * ((w_pred - 2 * w_pred) * h_pred)
 
     S = 1 - iou
-    alpha = v/(S + v + 1e-8)
+    alpha = tf.math.divide_no_nan(v, S+v)
     
-    mode = mode.upper()
-    if mode == "IOU":
-        return iou
-    elif mode == "DIOU":
-        return iou - u
-    elif mode == "CIOU":
-        return tf.clip_by_value(iou - (u + alpha * ar), -1.0, 1.0)
+    if mode == "CIOU":
+        return iou - (u + alpha * ar)#tf.clip_by_value(iou - (u + alpha * ar), -1.0, 1.0)
 
 @tf.function()
 def CalculateIOA(boxes1, boxes2):

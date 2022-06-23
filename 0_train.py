@@ -35,7 +35,7 @@ FLAGS = flags.FLAGS
 
 def main(_argv):
     tf.config.optimizer.set_jit("autoclustering")
-    tf.random.set_seed(22)
+    #tf.random.set_seed(22)
 
     if FLAGS.fp16:
         logging.info('Training Precision: FP16')
@@ -54,14 +54,14 @@ def main(_argv):
     
     logging.info('Training dataset: {}'.format(FLAGS.dataset))
     if FLAGS.dataset == 'pascal':
+        config['training_config']['num_classes'] = 20
         train_dataset = Dataset_Pascal(config, mode = 'train')
         test_dataset = Dataset_Pascal(config, mode = 'validation')
-        config['training_config']['num_classes'] = 20
         val_file = "data/pascal_test2007.json"
     elif FLAGS.dataset == 'coco':
+        config['training_config']['num_classes'] = 80
         train_dataset = Dataset_COCO(config, mode = 'train')
         test_dataset = Dataset_COCO(config, mode = 'validation')
-        config['training_config']['num_classes'] = 80
         val_file = "data/coco_val2017.json"
 
     ######################################### Compile
