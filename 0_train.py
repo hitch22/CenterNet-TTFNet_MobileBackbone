@@ -18,7 +18,7 @@ os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
 
 flags.DEFINE_boolean(
     name='fp16',
-    default=False,
+    default=True,
     help='Mixed Precision')
 
 flags.DEFINE_string(
@@ -35,15 +35,18 @@ FLAGS = flags.FLAGS
 
 def main(_argv):
     tf.config.optimizer.set_jit("autoclustering")
-    #tf.random.set_seed(22)
+    tf.random.set_seed(22)
+    logging.set_verbosity(logging.WARNING)
 
+    optimizer = GCSGD(learning_rate = 1e-2, momentum=0.9, nesterov=False)
     if FLAGS.fp16:
-        logging.info('Training Precision: FP16')
+        logging.warning('Training Precision: FP16')
         tf.keras.mixed_precision.set_global_policy(tf.keras.mixed_precision.Policy('mixed_float16'))
+        optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
     else:
-        logging.info('Training Precision: FP32')
+        logging.warning('Training Precision: FP32')
     
-    logging.info('Training model: {}'.format(FLAGS.model))
+    logging.warning('Training model: {}'.format(FLAGS.model))
     if FLAGS.model == 'MobileNetV3':
         modelName = "MobileNetV3_FPN_TTFNet"
     elif FLAGS.model == 'MobileDet':
@@ -52,7 +55,7 @@ def main(_argv):
     with open(os.path.join("model/0_Config", modelName+".json"), "r") as config_file:
         config = json.load(config_file)
     
-    logging.info('Training dataset: {}'.format(FLAGS.dataset))
+    logging.warning('Training dataset: {}'.format(FLAGS.dataset))
     if FLAGS.dataset == 'pascal':
         config['training_config']['num_classes'] = 20
         train_dataset = Dataset_Pascal(config, mode = 'train')
@@ -69,11 +72,8 @@ def main(_argv):
     model = ModelBuilder(config = config)
     #model.load_weights("logs/_epoch600_mAP0.132").expect_partial()
 
-    optimizer = GCSGD(momentum=0.9, nesterov=False)
-    #optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
-    #optimizer = tf.keras.optimizers.Adam()
-
-    model.summary(expand_nested=True, show_trainable=True)
+    print(model)
+    #model.summary()
     model.compile(loss=CenterNetLoss(config), optimizer=optimizer, weighted_metrics=[])
     model.fit(train_dataset.dataset,
             epochs=config["training_config"]["epochs"],

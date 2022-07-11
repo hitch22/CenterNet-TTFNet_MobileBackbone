@@ -10,7 +10,7 @@ class IOU(tf.losses.Loss):
         super().__init__(reduction="none", name="IOU")
         #self.mode = mode
         h = w = config['model_config']['feature_map_shapes']
-        x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=tf.float32), tf.range(w, dtype=tf.float32))
+        x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=_policy.compute_dtype), tf.range(w, dtype= _policy.compute_dtype))
         #x_grid, y_gird = tf.meshgrid(tf.range(0.0, 1.0, 1.0/h, dtype=tf.float32), tf.range(0.0, 1.0, 1.0/w, dtype=tf.float32))
         self.grid = tf.stack([y_gird, x_grid], -1)
 
@@ -49,7 +49,7 @@ class HeatmapFocal(tf.losses.Loss):
             tf.math.pow(hm_pred, self._alpha)*tf.math.log(1.0 - hm_pred)*tf.math.pow(1.0 - hm_true, self._gamma)
             )
         loss = tf.reduce_sum(loss)
-        normalizer = tf.maximum(tf.reduce_sum(tf.cast(pos_mask, tf.float32)), 1.0)
+        normalizer = tf.maximum(tf.reduce_sum(tf.cast(pos_mask, _policy.compute_dtype)), 1.0)
         loss = loss/normalizer
         return loss
 
@@ -64,7 +64,7 @@ class CenterNetLoss(tf.losses.Loss):
         self._heat_loss_weight = config['training_config']["HeatLoss"]["Weight"]
         self._loc_loss_weight = config['training_config']["BoxLoss"]["Weight"]
 
-    def call(self, y_true, y_pred):
+    def call(self, y_true, y_pred): #32 16
         heatmap_true = y_true[..., :self._num_classes]
         heatmap_pred = y_pred[..., :self._num_classes]
         

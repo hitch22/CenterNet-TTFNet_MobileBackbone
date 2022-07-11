@@ -39,5 +39,6 @@ def TTFNet(x, config=None):
 
 	Headmap_outputs=_TTFNetHeatmapHead(x, config["model_config"]["head"]["filters"], **Heatmap_config_dict)
 	Size_outputs=_TTFNetSizepHead(x, config["model_config"]["head"]["filters"], **Size_config_dict)
-
-	return tf.keras.layers.Concatenate(axis=-1, name="LastConcat")([Headmap_outputs, Size_outputs])
+	output = tf.keras.layers.Concatenate(axis=-1, name="LastConcat")([Headmap_outputs, Size_outputs])
+	return tf.keras.layers.Activation('linear', dtype='float32', name="output_layer")(output)
+	
