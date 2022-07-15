@@ -62,7 +62,7 @@ class Logger(tf.keras.callbacks.Callback):
         encoded_label = sample[1]
         cocoLabel = sample[2]
 
-        predictions = self.model.predict(images) # b 100 6
+        predictions = self.model.predict(images, verbose=0) # b 100 6
         final_bboxes = predictions[..., :4]
         final_labels = predictions[..., 4]
         final_scores = predictions[..., 5]
