@@ -26,21 +26,27 @@ def _CenterNetOffsetpHead(x, filters, **config_dict):
 
 def CenterNet(x, config=None):
 	Size_config_dict={
-			'reg': config["model_config"]["head"]["regularization"],
+			'kernel_regularizer': tf.keras.regularizers.l2(config["model_config"]["head"]["regularization"]),
+			'kernel_initializer': tf.initializers.TruncatedNormal(mean=0.0, stddev=0.03),
 			'bias_initializer': tf.constant_initializer(0.0),
-        	'trainable': not config["model_config"]["neck"]["isFreeze"]
+        	'trainable':not config["model_config"]["head"]["isFreeze"],
+			'use_bias':True,
 			}
 
 	Heatmap_config_dict={
-			'reg': config["model_config"]["head"]["regularization"],
+			'kernel_regularizer': tf.keras.regularizers.l2(config["model_config"]["head"]["regularization"]),
+			'kernel_initializer': tf.initializers.TruncatedNormal(mean=0.0, stddev=0.03),
 			'bias_initializer': tf.constant_initializer(-4.6),
-			'trainable': not config["model_config"]["neck"]["isFreeze"],
-			'classNum': config["training_config"]["num_classes"]
+			'trainable':not config["model_config"]["head"]["isFreeze"],
+			'classNum': config["training_config"]["num_classes"],
+			'use_bias':True,
 			}
 
 	Offset_config_dict={
-			'reg': config["model_config"]["head"]["regularization"],
-			'trainable': not config["model_config"]["neck"]["isFreeze"]
+			'kernel_regularizer': tf.keras.regularizers.l2(config["model_config"]["head"]["regularization"]),
+			'kernel_initializer': tf.initializers.TruncatedNormal(mean=0.0, stddev=0.03),
+			'trainable':not config["model_config"]["head"]["isFreeze"],
+			'use_bias':True,
  			}
 
 	Headmap_outputs=_CenterNetHeatmapHead(x, config["model_config"]["head"]["filters"], **Heatmap_config_dict)

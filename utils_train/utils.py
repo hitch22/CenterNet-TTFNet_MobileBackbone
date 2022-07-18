@@ -53,7 +53,7 @@ def CalculateIOU(b1, b2, mode="IOU"):
     alpha = tf.math.divide_no_nan(v, S+v)
     
     if mode == "CIOU":
-        return iou - (u + alpha * ar)#tf.clip_by_value(iou - (u + alpha * ar), -1.0, 1.0)
+        return iou - (u + alpha*ar)#tf.clip_by_value(iou - (u + alpha * ar), -1.0, 1.0)
 
 @tf.function()
 def CalculateIOA(boxes1, boxes2):

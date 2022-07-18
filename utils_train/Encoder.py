@@ -1,8 +1,12 @@
 import tensorflow as tf
 
+
+##https://github.com/tensorflow/models/blob/master/research/object_detection/utils/target_assigner_utils_test.py
+##참고
 class LabelEncoder():
     def __init__(self, config):
-        self.FeatureMapResolution=config["model_config"]["feature_map_shapes"]
+        #self.FeatureMapResolution=config["model_config"]["feature_map_shapes"]
+        self.FeatureMapResolution=config['model_config']['target_size']//4
         self.targetSize=config["model_config"]["target_size"]
         self.classNum=config["training_config"]["num_classes"]
         self.downSampleRate=self.targetSize/self.FeatureMapResolution

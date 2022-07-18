@@ -33,7 +33,8 @@ class IOU(tf.losses.Loss):
     def __init__(self, config):
         super().__init__(reduction="none", name="IOULoss")
         #self.mode = mode
-        h = w = config['model_config']['feature_map_shapes']
+        #h = w = config['model_config']['feature_map_shapes']
+        h = w = config['model_config']['target_size']//4
         x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=_policy.compute_dtype), tf.range(w, dtype= _policy.compute_dtype))
         #x_grid, y_gird = tf.meshgrid(tf.range(0.0, 1.0, 1.0/h, dtype=tf.float32), tf.range(0.0, 1.0, 1.0/w, dtype=tf.float32))
         self.grid = tf.stack([y_gird, x_grid], -1)
@@ -113,9 +114,13 @@ class CenterNetLoss(tf.losses.Loss):
         heatmap_true = y_true[..., :self._num_classes]
         heatmap_pred = y_pred[..., :self._num_classes]
         
-        box_true = y_true[..., self._num_classes:]
-        box_pred = y_pred[..., self._num_classes:]
+        size_true = y_true[..., self._num_classes:self._num_classes+2] #
+        size_pred = y_pred[..., self._num_classes:self._num_classes+2]
+        
+        offset_true = y_true[..., -2:] #
+        offset_pred = y_pred[..., -2:]
 
-        heat_loss = self._heatmap_loss(heatmap_true, heatmap_pred) #[b h w c]
-        box_loss = self._box_loss(box_true, box_pred)#[b h w]
-        return heat_loss*self._heat_loss_weight, box_loss*self._loc_loss_weight
+        heat_loss = self._heatmap_loss(heatmap_true, heatmap_pred)
+        size_loss = self._box_loss(size_true, size_pred)
+        offset_loss = self._box_loss(offset_true, offset_pred)
+        return heat_loss*self._heat_loss_weight, size_loss*0.1, offset_loss*self._loc_loss_weight
