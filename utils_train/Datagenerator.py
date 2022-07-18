@@ -32,19 +32,20 @@ class DatasetBuilder():
 
         if self.mode == 'train' or self.mode == 'bboxtest':
             image, bbox, classes  = randomCrop(image, bbox, classes, p = 0.75)
-            image, bbox           = randomExpand(image, bbox, 0.5)
-            image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
+            #image, bbox           = randomExpand(image, bbox, 0.5)
+            image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 1.0)
             image, bbox           = flipHorizontal(image, bbox, p = 0.5)
             image                 = colorJitter(image, p = 1.0)
         else:
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
 
+
         if self.mode == 'train':
-            return (image/127.5) -1.0,  self._label_encoder._encode_sample(bbox, classes)#, originalShape
+            return (image/127.5) -1.0,  self._label_encoder._encode_sample(bbox, classes, 'ttf')
         elif self.mode == 'bboxtest':
-            return image, self._label_encoder._encode_sample(bbox, classes), bbox, classes
+            return image, self._label_encoder._encode_sample(bbox, classes, 'ttf'), bbox, classes
         else:
-            return (image/127.5) -1.0, self._label_encoder._encode_sample(bbox, classes), inferMetric
+            return (image/127.5) -1.0, self._label_encoder._encode_sample(bbox, classes, 'ttf'), inferMetric
 
     def _preprocess_after_batch(self, ds1, ds2, ds3, ds4):
         inner_p = tf.random.uniform([], minval=0, maxval=1)

@@ -5,9 +5,33 @@ from utils_train.utils import CalculateIOU
 
 _policy = tf.keras.mixed_precision.global_policy()
 
+class L1(tf.losses.Loss):
+    def __init__(self, config):
+        super().__init__(reduction="none", name="L1loss")
+
+    def call(y_true, y_pred, indices, mask):
+        """
+        This function was taken from:
+            https://github.com/MioChiu/TF_CenterNet/blob/master/loss.py
+        :param y_true: (batch, max_objects, 2)
+        :param y_pred: (batch, heatmap_height, heatmap_width, max_objects)
+        :param indices: (batch, max_objects)
+        :param mask: (batch, max_objects)
+        :return: l1 loss (single float value) for given predictions and ground truth
+        """
+        batch_dim = tf.shape(y_pred)[0]
+        channel_dim = tf.shape(y_pred)[-1]
+        y_pred = tf.reshape(y_pred, (batch_dim, -1, channel_dim))
+        indices = tf.cast(indices, tf.int32)
+        y_pred = tf.gather(y_pred, indices, batch_dims=1)
+        mask = tf.tile(tf.expand_dims(mask, axis=-1), (1, 1, 2))
+        total_loss = tf.reduce_sum(tf.abs(y_true * mask - y_pred * mask))
+        loss = total_loss / (tf.reduce_sum(mask) + 1e-5)
+        return loss
+
 class IOU(tf.losses.Loss):
     def __init__(self, config):
-        super().__init__(reduction="none", name="IOU")
+        super().__init__(reduction="none", name="IOULoss")
         #self.mode = mode
         h = w = config['model_config']['feature_map_shapes']
         x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=_policy.compute_dtype), tf.range(w, dtype= _policy.compute_dtype))
@@ -32,11 +56,10 @@ class IOU(tf.losses.Loss):
         loss = loss*wh_weight
 
         return tf.reduce_sum(loss)/tf.reduce_sum(wh_weight)
-        #return loss
 
 class HeatmapFocal(tf.losses.Loss):
     def __init__(self, alpha = 2, gamma = 4):
-        super().__init__(reduction="none", name="HeatmapFocal")
+        super().__init__(reduction="none", name="HeatmapFocalLoss")
         self._alpha = alpha
         self._gamma = gamma
 
@@ -53,12 +76,34 @@ class HeatmapFocal(tf.losses.Loss):
         loss = loss/normalizer
         return loss
 
+class TTFNetLoss(tf.losses.Loss):
+    def __init__(self, config):
+        super().__init__(reduction="none", name="TTFNetLoss")
+        self._heatmap_loss = HeatmapFocal(alpha = config['training_config']["HeatLoss"]["Alpha"], 
+                                        gamma=config['training_config']["HeatLoss"]["Gamma"])
+        self._box_loss = IOU(config)#(mode = config['training_config']["BoxLoss"]["LossFunction"])
+
+        self._num_classes = config['training_config']["num_classes"]
+        self._heat_loss_weight = config['training_config']["HeatLoss"]["Weight"]
+        self._loc_loss_weight = config['training_config']["BoxLoss"]["Weight"]
+
+    def call(self, y_true, y_pred): #32 16
+        heatmap_true = y_true[..., :self._num_classes]
+        heatmap_pred = y_pred[..., :self._num_classes]
+        
+        box_true = y_true[..., self._num_classes:]
+        box_pred = y_pred[..., self._num_classes:]
+
+        heat_loss = self._heatmap_loss(heatmap_true, heatmap_pred) #[b h w c]
+        box_loss = self._box_loss(box_true, box_pred)#[b h w]
+        return heat_loss*self._heat_loss_weight, box_loss*self._loc_loss_weight
+
 class CenterNetLoss(tf.losses.Loss):
     def __init__(self, config):
         super().__init__(reduction="none", name="CenterNetLoss")
         self._heatmap_loss = HeatmapFocal(alpha = config['training_config']["HeatLoss"]["Alpha"], 
                                         gamma=config['training_config']["HeatLoss"]["Gamma"])
-        self._box_loss = IOU(config)#(mode = config['training_config']["BoxLoss"]["LossFunction"])
+        self._box_loss = L1(config)
 
         self._num_classes = config['training_config']["num_classes"]
         self._heat_loss_weight = config['training_config']["HeatLoss"]["Weight"]

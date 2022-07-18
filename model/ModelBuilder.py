@@ -19,8 +19,8 @@ def reduce_losses(losses_dict):
     return losses_dict
 
 def nms(heat, kernel=3):
-    heat_max = tf.keras.layers.MaxPooling2D(kernel, 1, padding="same")(heat)
-    heat_max_mask = tf.math.abs(heat - heat_max) < 1e-4
+    heat_max = tf.keras.layers.MaxPooling2D(kernel, 1, padding="same", dtype = _policy.compute_dtype)(heat)
+    heat_max_mask = tf.math.abs(heat - heat_max) < 1e-4 #32 16
     heat_max_peak = tf.where(heat_max_mask, heat_max, 0.0)
     return heat_max_peak
 

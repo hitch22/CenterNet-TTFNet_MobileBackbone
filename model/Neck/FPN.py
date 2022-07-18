@@ -14,10 +14,6 @@ def FPN(x, config=None):
     }
     
     C2, C3, C4, C5=x
-    C5 = tf.keras.layers.Dropout(rate=config["model_config"]["neck"]["dropout"])(C5)
-    C4 = tf.keras.layers.Dropout(rate=config["model_config"]["neck"]["dropout"])(C4)
-    C3 = tf.keras.layers.Dropout(rate=config["model_config"]["neck"]["dropout"])(C3)
-    C2 = tf.keras.layers.Dropout(rate=config["model_config"]["neck"]["dropout"])(C2)
 
     P5=_Conv(C5, filters=filters[0], kernel_size=1, strides=1, prefix="C5Residual/", **config_dict)
 

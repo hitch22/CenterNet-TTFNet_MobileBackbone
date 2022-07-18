@@ -56,6 +56,7 @@ class LabelEncoder():
             min_iou = 0.7
             h_gt = hw[..., 0]
             w_gt = hw[..., 1]
+
             ####distance_detection_offset
             a=1
             b=-(h_gt+w_gt)
@@ -94,10 +95,10 @@ class LabelEncoder():
         
         hm = tf.math.exp(-tf.reduce_sum(0.5*tf.square(dist_from_center/sigma), -1))
         hm = tf.where(mask, hm, 0.0)
-        hm = tf.where(hm>1e-4, hm, 0.0)
+        #hm = tf.where(hm>1e-4, hm, 0.0)
         return hm
 
-    def _encode_sample(self, gt_boxes, cls_ids):
+    def _encode_sample(self, gt_boxes, cls_ids, mode='ttf'):
         '''
             input gt_boxes format [y1 x1 y2 x2]
         '''
@@ -106,7 +107,7 @@ class LabelEncoder():
             return tf.zeros([self.FeatureMapResolution, self.FeatureMapResolution, self.classNum+4+1])
 
         rescaled_boxes = gt_boxes*self.FeatureMapResolution
-        hm=self._calculate_hm(rescaled_boxes)
+        hm=self._calculate_hm(rescaled_boxes, mode)
         
         hm_target = self._make_hm_target(hm, cls_ids)
         box_target, regW_target = self._make_box_target(hm, rescaled_boxes)

@@ -45,6 +45,6 @@ def CenterNet(x, config=None):
 
 	Headmap_outputs=_CenterNetHeatmapHead(x, config["model_config"]["head"]["filters"], **Heatmap_config_dict)
 	Size_outputs=_CenterNetSizepHead(x, config["model_config"]["head"]["filters"], **Size_config_dict)
-	Offset_outputs=_CenterNetOffsetpHead(x, config["model_config"]["head"]["filters"], **Offset_config_dict) #center
-
-	return tf.keras.layers.Concatenate(axis=-1, name="LastConcat")([Headmap_outputs, Size_outputs, Offset_outputs])
+	Offset_outputs=_CenterNetOffsetpHead(x, config["model_config"]["head"]["filters"], **Offset_config_dict)
+	output=tf.keras.layers.Concatenate(axis=-1, name="LastConcat")([Headmap_outputs, Size_outputs, Offset_outputs])
+	return tf.keras.layers.Activation('linear', dtype='float32', name="output_layer")(output)

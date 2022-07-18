@@ -17,7 +17,6 @@
             "isLite": true,
             "filters": [64, 32, 24, 24],
             "regularization":0.0,
-            "dropout":0.0,
             "isFreeze":false
         },
         "head":
@@ -48,6 +47,6 @@
         "batch_size": 64,
         "num_classes": 80,
         "epochs": 300,
-        "initial_learning_rate": 1e-2
+        "initial_learning_rate": 5e-2
     }
 }

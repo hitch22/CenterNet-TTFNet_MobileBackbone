@@ -97,7 +97,7 @@ def _DeptwiseConv(inputs, kernel_size=3, strides=2, padding='same', dilation_rat
 
     return x
 
-def _SeparableConv(inputs, filters, kernel_size=3, strides=2, padding='same', normalization=BatchNormalization, activation=ReLU, prefix=None, **conf_dict):
+def _SeparableConv(inputs, filters, kernel_size=3, strides=2, padding='same', normalization=BatchNormalization, activation=ReLU6, prefix=None, **conf_dict):
     conf_dict_inner = conf_dict.copy()
 
     if 'kernel_initializer' in  conf_dict_inner.keys():
