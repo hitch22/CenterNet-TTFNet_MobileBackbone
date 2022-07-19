@@ -1,11 +1,7 @@
 import tensorflow as tf
 
-
-##https://github.com/tensorflow/models/blob/master/research/object_detection/utils/target_assigner_utils_test.py
-##참고
 class LabelEncoder():
     def __init__(self, config):
-        #self.FeatureMapResolution=config["model_config"]["feature_map_shapes"]
         self.FeatureMapResolution=config['model_config']['target_size']//4
         self.targetSize=config["model_config"]["target_size"]
         self.classNum=config["training_config"]["num_classes"]
@@ -15,6 +11,7 @@ class LabelEncoder():
         #x_grid, y_gird = tf.meshgrid(tf.range(0.0, 1.0, 1.0/self.FeatureMapResolution, dtype=tf.float32), tf.range(0.0, 1.0, 1.0/self.FeatureMapResolution, dtype=tf.float32))
         grid = tf.stack([y_gird, x_grid], -1)
         self.grid = tf.expand_dims(grid, -2)
+        self.mode = config["model_config"]["head"]["name"].upper()
 
     def _make_box_target(self, hm, rescaled_boxes):
         bbox_area = tf.math.log(tf.reduce_prod(rescaled_boxes[..., 2:]-rescaled_boxes[..., :2]+1, axis=-1))
@@ -45,18 +42,18 @@ class LabelEncoder():
         gaussian_per_box_per_class_map = reshaped_gaussian_map * reshaped_channel_onehot
         return tf.reduce_max(gaussian_per_box_per_class_map, axis=2)
     
-    def _calculate_hm(self, rescaled_boxes, mode="TTF"):
+    def _calculate_hm(self, rescaled_boxes):
         hw = rescaled_boxes[..., 2:] - rescaled_boxes[..., :2]
         center = tf.floor((rescaled_boxes[..., 2:]+rescaled_boxes[..., :2])/2.0)
         dist_from_center = self.grid-center
 
-        if mode.upper() == "TTF":
+        if self.mode == "TTFNET":
             alpha = 0.54
             radius = tf.floor(hw/ 2.0 * alpha)
             sigma=(2*radius+1)/6
             mask = tf.reduce_all(tf.abs(dist_from_center) <= tf.minimum(radius, hw//2.0), axis=-1)
 
-        elif mode.upper() == "CENTER":
+        elif self.mode == "CENTERNET":
             min_iou = 0.7
             h_gt = hw[..., 0]
             w_gt = hw[..., 1]
@@ -102,7 +99,7 @@ class LabelEncoder():
         #hm = tf.where(hm>1e-4, hm, 0.0)
         return hm
 
-    def _encode_sample(self, gt_boxes, cls_ids, mode='ttf'):
+    def _encode_sample(self, gt_boxes, cls_ids):
         '''
             input gt_boxes format [y1 x1 y2 x2]
         '''
@@ -111,7 +108,7 @@ class LabelEncoder():
             return tf.zeros([self.FeatureMapResolution, self.FeatureMapResolution, self.classNum+4+1])
 
         rescaled_boxes = gt_boxes*self.FeatureMapResolution
-        hm=self._calculate_hm(rescaled_boxes, mode)
+        hm=self._calculate_hm(rescaled_boxes)
         
         hm_target = self._make_hm_target(hm, cls_ids)
         box_target, regW_target = self._make_box_target(hm, rescaled_boxes)
