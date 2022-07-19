@@ -1,5 +1,3 @@
-1. resizer fixed->keep ar
 1_2. relu6->relu
-2. optimizer 
 3. giou
 4.gaussian pathch

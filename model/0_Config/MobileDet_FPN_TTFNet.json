@@ -2,7 +2,6 @@
     "model_config":
     {
         "target_size": 320,
-        "feature_map_shapes": 80,
 
         "backbone":
         {

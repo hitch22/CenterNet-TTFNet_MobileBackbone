@@ -13,7 +13,7 @@ from utils_train.Datagenerator import Dataset_COCO, Dataset_Pascal, Dataset_COCO
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
+#os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
 #os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
 
 flags.DEFINE_boolean(
@@ -53,7 +53,7 @@ def main(_argv):
     with open(os.path.join("model/0_Config", modelName+".json"), "r") as config_file:
         config = json.load(config_file)
     
-    logging.warning('Training dataset: {}'.format(FLAGS.dataset))
+    logging.warning('Training dataset: {}'.format(FLAGS.dataset.upper()))
     if FLAGS.dataset == 'pascal':
         config['training_config']['num_classes'] = 20
         train_dataset = Dataset_Pascal(config, mode = 'train')

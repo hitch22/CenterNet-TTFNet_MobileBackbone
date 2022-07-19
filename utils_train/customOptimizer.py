@@ -12,9 +12,4 @@ class GCSGD(tf.keras.optimizers.SGD):
         if hasattr(self, 'clipvalue') and self.clipvalue > 0:
             grads = [K.clip(g, -self.clipvalue, self.clipvalue) for g in grads]
 
-        '''if self.clipnorm > 0:
-            grads = [tf.clip_by_norm(g, self.clipnorm) for g in grads]
-            
-        if self.clipvalue > 0:
-            grads = [tf.clip_by_value(g, -self.clipnorm, self.clipnorm) for g in grads]'''
         return grads

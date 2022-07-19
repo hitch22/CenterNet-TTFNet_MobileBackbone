@@ -13,18 +13,13 @@ def get_scaled_losses(loss, regularization_losses=None):
         loss = loss + tf.math.add_n(regularization_losses)
     return loss
 
-def reduce_losses(losses_dict):
-    for key, value in losses_dict.items():
-        losses_dict[key] = tf.reduce_mean(value)
-    return losses_dict
-
 def nms(heat, kernel=3):
     heat_max = tf.keras.layers.MaxPooling2D(kernel, 1, padding="same", dtype = _policy.compute_dtype)(heat)
     heat_max_mask = tf.math.abs(heat - heat_max) < 1e-4 #32 16
     heat_max_peak = tf.where(heat_max_mask, heat_max, 0.0)
     return heat_max_peak
 
-def decode(detections, k=100, relative=False):
+def decode(detections, k=100, relative=False, isCenter=False):
     heatmap=tf.nn.sigmoid(detections[..., :80])
     wh=detections[..., 80:84]
 
@@ -44,7 +39,7 @@ def decode(detections, k=100, relative=False):
     ys = tf.expand_dims(topk_ys, axis=-1)
     xs = tf.expand_dims(topk_xs, axis=-1)
 
-    if False: #center
+    if isCenter:
         reg = tf.reshape(reg, (batch, -1, tf.shape(reg)[-1]))
         reg = tf.gather(reg, inds, axis=1, batch_dims=-1)
         ys, xs = ys + reg[..., 0:1], xs + reg[..., 1:2]
@@ -55,13 +50,13 @@ def decode(detections, k=100, relative=False):
     clf = tf.cast(tf.expand_dims(topk_clf, axis=-1), tf.float32)
     scores = tf.expand_dims(topk_scores, axis=-1)
 
-    if False: #center
+    if isCenter:
         wh = tf.math.abs(wh)
         ymin = ys - wh[..., 0:1] / 2
         xmin = xs - wh[..., 1:2] / 2
         ymax = ys + wh[..., 0:1] / 2
         xmax = xs + wh[..., 1:2] / 2
-    elif True:
+    else:
         #ys/=height
         #xs/=width
         ymin = ys - wh[..., 0:1]
@@ -92,7 +87,11 @@ class ModelBuilder(tf.keras.Model):
                         outputs=outputs,
                         name='Detector')
 
-        self.config=config    
+        self.config=config
+        self.isCenter = config["model_config"]["head"]["name"].upper() in ["CENTERNET"]
+        self.total_loss_tracker = tf.keras.metrics.Mean(name="TotalL")
+        self.heat_loss_tracker = tf.keras.metrics.Mean(name="HeatL")
+        self.box_loss_tracker = tf.keras.metrics.Mean(name="BoxL")
 
     def compile(self, loss, optimizer, **kwargs):
         super().compile(**kwargs)
@@ -107,46 +106,55 @@ class ModelBuilder(tf.keras.Model):
             loss_values=self.loss_fn(y_true, y_pred)
 
             heat_loss=loss_values[0]    #[batch]
-            loc_loss=loss_values[1]    #[batch]
+            box_loss=loss_values[1]    #[batch]
 
-            loss=heat_loss+loc_loss
-            _scaled_losses=get_scaled_losses(loss, self.losses)
+            total_loss=heat_loss+box_loss
+            _scaled_losses=get_scaled_losses(total_loss, self.losses)
             _scaled_losses=self.optimizer.get_scaled_loss(_scaled_losses)
         
         scaled_gradients=tape.gradient(_scaled_losses, self.trainable_variables)
         scaled_gradients=self.optimizer.get_unscaled_gradients(scaled_gradients)
         self.optimizer.apply_gradients(zip(scaled_gradients, self.trainable_variables))
 
+        self.total_loss_tracker.update_state(total_loss)
+        self.heat_loss_tracker.update_state(heat_loss)
+        self.box_loss_tracker.update_state(box_loss)
+
         loss_dict={
-                    'HeatL': heat_loss,
-                    'BoxL': loc_loss,
-                    'RegL': self.losses,
-                    'TotalL': loss
+                    'HeatL': self.heat_loss_tracker.result(),
+                    'BoxL': self.box_loss_tracker.result(),
+                    'RegL': tf.reduce_mean(self.losses),
+                    'TotalL': self.total_loss_tracker.result()
                 }
         
-        return reduce_losses(loss_dict)
+        return loss_dict
 
     def test_step(self, data):
         images, y_true, _ = data
         
         y_pred=self(images, training=False)
         loss_values=self.loss_fn(y_true, y_pred)
+        
         heat_loss=loss_values[0]
-        loc_loss=loss_values[1]
+        box_loss=loss_values[1]
 
-        loss=heat_loss+loc_loss
+        total_loss=heat_loss+box_loss
+
+        self.total_loss_tracker.update_state(total_loss)
+        self.heat_loss_tracker.update_state(heat_loss)
+        self.box_loss_tracker.update_state(box_loss)
 
         loss_dict={
-                    'HeatL': heat_loss,
-                    'BoxL': loc_loss,
-                    'TotalL': loss
+                    'HeatL': self.heat_loss_tracker.result(),
+                    'BoxL': self.box_loss_tracker.result(),
+                    'TotalL': self.total_loss_tracker.result()
                 }
                     
-        return reduce_losses(loss_dict)
+        return loss_dict
 
     def predict_step(self, images):
         predictions=self(images, training=False)
-        return decode(predictions)
+        return decode(predictions, relative=False, isCenter = self.isCenter)
 
     def __repr__(self, table=False):
         if (table == True):
