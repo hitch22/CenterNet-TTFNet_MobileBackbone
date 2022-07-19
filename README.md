@@ -1,4 +1,4 @@
-# Mobile_CenterNet_TTFNet
+#  CenterNet-TTFNet_MobileBackbone
 Tensorflow2 and Keras implementation of CenterNet and TTFNet
 
 ## Inference Examples
