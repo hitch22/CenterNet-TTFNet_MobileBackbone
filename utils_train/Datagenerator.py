@@ -41,9 +41,9 @@ class DatasetBuilder():
 
 
         if self.mode == 'train':
-            return (image/127.5) -1.0,  self._label_encoder._encode_sample(bbox, classes, 'ttf')
+            return (image/127.5) -1.0,  self._label_encoder._encode_sample(bbox, classes)
         else:
-            return (image/127.5) -1.0, self._label_encoder._encode_sample(bbox, classes, 'ttf'), inferMetric
+            return (image/127.5) -1.0, self._label_encoder._encode_sample(bbox, classes), inferMetric
 
     def _preprocess_after_batch(self, ds1, ds2, ds3, ds4):
         inner_p = tf.random.uniform([], minval=0, maxval=1)

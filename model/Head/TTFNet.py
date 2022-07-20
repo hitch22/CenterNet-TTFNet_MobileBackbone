@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from model.customLayer import Sigmoid, _SeparableConv, _Conv, ReLU, _SeparableDepthwiseConv
+from model.customLayer import Sigmoid, _SeparableConv, _Conv, ReLU, _SeparableDepthwiseConv, HSigmoid6
 
 def _TTFNetHeatmapHead(x, filters, **config_dict):
 	prefix="HeatmapHead/"
@@ -12,13 +12,12 @@ def _TTFNetHeatmapHead(x, filters, **config_dict):
 	x=_Conv(x, filters=classNum, kernel_size=1, strides=1, normalization=None, activation=None, prefix=prefix+"Conv/", **config_dict)
 	return x
 
-def _TTFNetSizepHead(x, filters, **config_dict):
+def _TTFNetSizeHead(x, filters, **config_dict):
 	prefix="SizeHead/"
 	box_coord_size = 4
-	weights = 16.0
 	x=_SeparableConv(x, filters=filters, kernel_size=3, strides=1, prefix=prefix+"Sep/", **config_dict)
-	x=_Conv(x, filters=box_coord_size, kernel_size=1, strides=1, normalization=None, activation=ReLU, prefix=prefix+"Conv/", **config_dict)
-	return x * weights
+	x=_Conv(x, filters=box_coord_size, kernel_size=1, strides=1, normalization=None, activation=HSigmoid6, prefix=prefix+"Conv/", **config_dict)
+	return x
 
 def TTFNet(x, config=None):
 	Size_config_dict = {
@@ -38,7 +37,7 @@ def TTFNet(x, config=None):
     }
 
 	Headmap_outputs=_TTFNetHeatmapHead(x, config["model_config"]["head"]["filters"], **Heatmap_config_dict)
-	Size_outputs=_TTFNetSizepHead(x, config["model_config"]["head"]["filters"], **Size_config_dict)
+	Size_outputs=_TTFNetSizeHead(x, config["model_config"]["head"]["filters"], **Size_config_dict)
 	output = tf.keras.layers.Concatenate(axis=-1, name="LastConcat")([Headmap_outputs, Size_outputs])
 	return tf.keras.layers.Activation('linear', dtype='float32', name="output_layer")(output)
 	

@@ -43,26 +43,25 @@ class IOU(tf.losses.Loss):
         logging.warning('IOULoss: {}'.format(self.mode))
 
         h = w = config['model_config']['target_size']//4
-        x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=_policy.compute_dtype), tf.range(w, dtype= _policy.compute_dtype))
-        #x_grid, y_gird = tf.meshgrid(tf.range(0.0, 1.0, 1.0/h, dtype=tf.float32), tf.range(0.0, 1.0, 1.0/w, dtype=tf.float32))
+        #x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=_policy.compute_dtype), tf.range(w, dtype= _policy.compute_dtype))
+        x_grid, y_gird = tf.meshgrid(tf.range(0.0, 1.0, 1.0/h, dtype=tf.float32), tf.range(0.0, 1.0, 1.0/w, dtype=tf.float32))
         self.grid = tf.stack([y_gird, x_grid], -1)
 
     def call(self, box_true_with_W, box_pred):
         offset_pred = box_pred[..., :4]
         bbox_gt = box_true_with_W[..., :4]
         wh_weight = box_true_with_W[..., 4]
-        pos_mask = wh_weight>0 # b h w       
         
         yx_min = self.grid-offset_pred[..., :2]
         yx_max = self.grid+offset_pred[..., 2:]
 
         bbox_pred = tf.concat((yx_min, yx_max), axis=-1)
-        bbox_pred = tf.where(pos_mask[..., tf.newaxis], bbox_pred, 0.0)
 
         loss = self._calculateIOULoss(bbox_gt, bbox_pred)
+        loss = tf.where(wh_weight>0, loss, 0.0)
         loss = loss*wh_weight
-        loss = tf.reduce_sum(loss, [1,2])
 
+        loss = tf.reduce_sum(loss, [1,2])
         normalizer = tf.reduce_sum(wh_weight, [1,2])
         return tf.math.divide_no_nan(loss, normalizer)
 
@@ -101,8 +100,7 @@ class IOU(tf.losses.Loss):
 
         else:
             center_distance_square = tf.reduce_sum(tf.math.square(center_gt - center_pred), axis = -1)
-            #diagonal_distance =  tf.square(tf.linalg.norm(enclose_intersection, axis = -1))
-            diagonal_distance_square = enclose_intersection[..., 0]**2+enclose_intersection[..., 1]**2
+            diagonal_distance_square = tf.reduce_sum(tf.math.square(enclose_intersection), axis = -1)
             u = tf.math.divide_no_nan(center_distance_square, diagonal_distance_square)
 
             if self.mode == "DIOU":
@@ -132,16 +130,15 @@ class HeatmapFocal(tf.losses.Loss):
         self._gamma = gamma
 
     def call(self, hm_true, hm_pred):        
-        hm_pred = tf.clip_by_value(tf.nn.sigmoid(hm_pred), 1e-4, 1.0-1e-4)
-        
+        hm_pred = tf.nn.sigmoid(hm_pred)
         pos_mask = tf.math.equal(hm_true, 1.0)
 
         loss = -tf.where(pos_mask, \
             tf.math.pow(1.0 - hm_pred, self._alpha)*tf.math.log(hm_pred), \
             tf.math.pow(hm_pred, self._alpha)*tf.math.log(1.0 - hm_pred)*tf.math.pow(1.0 - hm_true, self._gamma)
             )
+            
         loss = tf.reduce_sum(loss, [1,2,3])
-
         normalizer = tf.reduce_sum(tf.cast(pos_mask, tf.float32), [1,2,3])
         return tf.math.divide_no_nan(loss, normalizer)
 

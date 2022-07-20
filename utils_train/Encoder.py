@@ -14,23 +14,27 @@ class LabelEncoder():
         self.mode = config["model_config"]["head"]["name"].upper()
 
     def _make_box_target(self, hm, rescaled_boxes):
+        gt_boxes = rescaled_boxes/self.FeatureMapResolution
         bbox_area = tf.math.log(tf.reduce_prod(rescaled_boxes[..., 2:]-rescaled_boxes[..., :2]+1, axis=-1))
-        ids = tf.argsort(tf.cast(-bbox_area, tf.float64))
+        ids = tf.argsort(-bbox_area)
+        #ids = tf.argsort(tf.cast(-bbox_area, tf.float64))
 
-        sorted_area = tf.gather(bbox_area, ids, axis = -1)
-        sorted_rescaled_boxes = tf.gather(rescaled_boxes, ids)
-        sorted_hm = tf.gather(hm, ids, axis=-1)
-        sorted_mask =  tf.where(sorted_hm > 0, 1, 0)
+        sorted_area = tf.gather(bbox_area, ids, axis = -1) #N
+        sorted_boxes = tf.gather(gt_boxes, ids)
+        sorted_hm = tf.gather(hm, ids, axis=-1) #80 80 N
+        
+        sorted_mask = tf.where(sorted_hm > 0, 1, 0)
         sorted_mask = sorted_mask*(tf.range(tf.shape(rescaled_boxes)[0])+1)
         priority_mask = tf.logical_and(tf.equal(tf.reduce_max(sorted_mask, axis=-1, keepdims=True), sorted_mask), sorted_mask > 0)
-
-        temp_target = tf.tile(sorted_rescaled_boxes[tf.newaxis, tf.newaxis, ...], [self.FeatureMapResolution,self.FeatureMapResolution,1,1])
-        box_target = tf.reduce_max(tf.where(priority_mask[..., tf.newaxis], temp_target, 0.0), -2)
+        #priority_mask = tf.equal(tf.reduce_max(sorted_mask, axis=-1, keepdims=True), sorted_mask)
 
         normalizer = tf.reduce_sum(sorted_hm, [0, 1])
-        normalizer = tf.floor(normalizer)
-        temp_regW_target = tf.math.divide_no_nan(sorted_hm*sorted_area, normalizer)
-        regW_target = tf.reduce_max(tf.where(priority_mask, temp_regW_target, 0.0), -1, keepdims=True)
+
+        box_target = tf.tile(sorted_boxes[tf.newaxis, tf.newaxis, ...], [self.FeatureMapResolution,self.FeatureMapResolution,1,1])
+        box_target = tf.reduce_max(tf.where(priority_mask[..., tf.newaxis], box_target, 0.0), -2)
+
+        regW_target = tf.math.divide_no_nan(sorted_hm*sorted_area, normalizer)
+        regW_target = tf.reduce_max(tf.where(priority_mask, regW_target, 0.0), -1, keepdims=True)
         return box_target, regW_target
 
     def _make_hm_target(self, hm, cls_ids):
@@ -96,7 +100,8 @@ class LabelEncoder():
         
         hm = tf.math.exp(-tf.reduce_sum(0.5*tf.square(dist_from_center/sigma), -1))
         hm = tf.where(mask, hm, 0.0)
-        #hm = tf.where(hm>1e-4, hm, 0.0)
+        hm = tf.where(hm>1e-4, hm, 0.0)
+
         return hm
 
     def _encode_sample(self, gt_boxes, cls_ids):
@@ -112,5 +117,4 @@ class LabelEncoder():
         
         hm_target = self._make_hm_target(hm, cls_ids)
         box_target, regW_target = self._make_box_target(hm, rescaled_boxes)
-        #box_target=box_target/self.FeatureMapResolution
         return tf.concat([hm_target, box_target, regW_target], -1)
