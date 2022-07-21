@@ -8,12 +8,17 @@ def FPN(x, config=None):
 
     config_dict = {
         'kernel_regularizer': tf.keras.regularizers.l2(config["model_config"]["neck"]["regularization"]),
-        'kernel_initializer': tf.initializers.TruncatedNormal(mean=0.0, stddev=0.03),
+        #'kernel_initializer': tf.initializers.TruncatedNormal(mean=0.0, stddev=0.03),
+        'kernel_initializer': tf.keras.initializers.HeNormal(),
         'trainable':not config["model_config"]["backbone"]["isFreeze"],
         'use_bias':False
     }
     
     C2, C3, C4, C5=x
+    #C5 = tf.keras.layers.Dropout(rate=0.5)(C5)
+    #C4 = tf.keras.layers.Dropout(rate=0.4)(C4)
+    #C3 = tf.keras.layers.Dropout(rate=0.3)(C3)
+    #C2 = tf.keras.layers.Dropout(rate=0.2)(C2)
     ##################################################
     P5=_Conv(C5, filters=filters[0], kernel_size=1, strides=1, prefix="C5P5/", **config_dict)
     P5_upsampled=UpSampling2D(name='P5_upsample')(P5)

@@ -185,8 +185,8 @@ class CallbackBuilder():
             
         self.LrScheduler = tf.keras.callbacks.LearningRateScheduler(
             CosineDecayWithLinearWarmup(initial_learning_rate = config["training_config"]["initial_learning_rate"],
-                                        warmup_learning_rate = config["training_config"]["initial_learning_rate"]/3,
-                                        warmup_steps = 4,
+                                        warmup_learning_rate = config["training_config"]["initial_learning_rate"]/2,
+                                        warmup_steps = 1,
                                         total_steps = config["training_config"]["epochs"]))
 
     def get_callbacks(self):

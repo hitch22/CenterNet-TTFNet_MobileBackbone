@@ -27,7 +27,7 @@ class L1(tf.losses.Loss):
         total_loss = tf.reduce_sum(tf.abs(y_true * mask - y_pred * mask))
         loss = total_loss / (tf.reduce_sum(mask) + 1e-5)
 
-        pos_mask = 1#wh_weight>0 # b h w   
+        pos_mask = 'asd'#wh_weight>0 # b h w   
         y_pred = tf.where(pos_mask[..., tf.newaxis], y_pred, 0.0)
         y_true= tf.where(pos_mask[..., tf.newaxis], y_true, 0.0)
 
@@ -48,12 +48,12 @@ class IOU(tf.losses.Loss):
         self.grid = tf.stack([y_gird, x_grid], -1)
 
     def call(self, box_true_with_W, box_pred):
-        offset_pred = box_pred[..., :4]
+        Size_pred = box_pred[..., :4]
         bbox_gt = box_true_with_W[..., :4]
         wh_weight = box_true_with_W[..., 4]
         
-        yx_min = self.grid-offset_pred[..., :2]
-        yx_max = self.grid+offset_pred[..., 2:]
+        yx_min = self.grid-Size_pred[..., :2]
+        yx_max = self.grid+Size_pred[..., 2:]
 
         bbox_pred = tf.concat((yx_min, yx_max), axis=-1)
 
@@ -130,7 +130,6 @@ class HeatmapFocal(tf.losses.Loss):
         self._gamma = gamma
 
     def call(self, hm_true, hm_pred):        
-        hm_pred = tf.nn.sigmoid(hm_pred)
         pos_mask = tf.math.equal(hm_true, 1.0)
 
         loss = -tf.where(pos_mask, \

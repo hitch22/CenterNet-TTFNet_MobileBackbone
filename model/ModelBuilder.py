@@ -19,8 +19,9 @@ def nms(heat, kernel=3):
     heat_max_peak = tf.where(heat_max_mask, heat_max, 0.0)
     return heat_max_peak
 
-def decode(detections, k=100, relative=False, isCenter=False):
-    heatmap=tf.nn.sigmoid(detections[..., :80])
+def decode(detections, k=100, isCenter=False):
+    #heatmap=tf.nn.sigmoid(detections[..., :80])
+    heatmap=detections[..., :80]
     wh=detections[..., 80:84]
 
     heat_max_peak = nms(heatmap)
@@ -34,14 +35,12 @@ def decode(detections, k=100, relative=False, isCenter=False):
     topk_ys = tf.cast(topk_inds // cat // width, tf.float32)
     topk_inds = tf.cast(topk_ys * tf.cast(width, tf.float32) + topk_xs, tf.int32)
 
-    #scores, inds, clf, ys, xs = topk(heat_max_peak_flat, k=k)
-
     ys = tf.expand_dims(topk_ys, axis=-1)
     xs = tf.expand_dims(topk_xs, axis=-1)
 
     if isCenter:
         reg = tf.reshape(reg, (batch, -1, tf.shape(reg)[-1]))
-        #reg = tf.gather(reg, inds, axis=1, batch_dims=-1)
+        reg = tf.gather(reg, topk_inds, axis=1, batch_dims=-1)
         ys, xs = ys + reg[..., 0:1], xs + reg[..., 1:2]
 
     wh = tf.reshape(wh, (batch, -1, tf.shape(wh)[-1]))
@@ -68,10 +67,6 @@ def decode(detections, k=100, relative=False, isCenter=False):
         xmax = xs + wh[..., 3:4]
 
     bboxes = tf.concat([ymin, xmin, ymax, xmax], axis=-1)
-
-    #if True:
-    #    bboxes /= tf.cast(tf.stack([height, width, height, width]), dtype=tf.float32)
-
     detections = tf.concat([bboxes, clf, scores], axis=-1)
     return detections
 
@@ -108,8 +103,8 @@ class ModelBuilder(tf.keras.Model):
             y_pred=self(images, training=True)
             loss_values=self.loss_fn(y_true, y_pred)
 
-            heat_loss=loss_values[0]    #[batch]
-            box_loss=loss_values[1]    #[batch]
+            heat_loss=loss_values[0]
+            box_loss=loss_values[1]
 
             total_loss=heat_loss+box_loss
             _scaled_losses=get_scaled_losses(total_loss, self.losses)
@@ -157,7 +152,7 @@ class ModelBuilder(tf.keras.Model):
 
     def predict_step(self, images):
         predictions=self(images, training=False)
-        return decode(predictions, relative=False, isCenter = self.isCenter)
+        return decode(predictions, isCenter = self.isCenter)
 
     def __repr__(self, table=False):
         print_str=''

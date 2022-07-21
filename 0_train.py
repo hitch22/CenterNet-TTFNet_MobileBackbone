@@ -13,8 +13,7 @@ from utils_train.Datagenerator import Dataset_COCO, Dataset_Pascal, Dataset_COCO
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-#os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
-#os.environ['TF_ENABLE_AUTO_MIXED_PRECISION'] = '1'
+#os.environ['TF_XLA_FLAGS'] = "--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit"
 
 flags.DEFINE_boolean(
     name='fp16',
@@ -40,6 +39,7 @@ def main(_argv):
 
     optimizer = GCSGD(momentum=0.9, nesterov=False)
     #optimizer = tf.keras.optimizers.Adam()
+    #optimizer = tf.keras.optimizers.SGD(momentum=0.9, nesterov=False)
     if FLAGS.fp16:
         logging.warning('Training Precision: FP16')
         tf.keras.mixed_precision.set_global_policy(tf.keras.mixed_precision.Policy('mixed_float16'))
@@ -79,7 +79,6 @@ def main(_argv):
     #model.load_weights("logs/_epoch600_mAP0.132").expect_partial()
 
     print(model)
-    #model.summary()
     model.compile(loss=loss_fn, optimizer=optimizer, weighted_metrics=[])
     model.fit(train_dataset.dataset,
             epochs=config["training_config"]["epochs"],

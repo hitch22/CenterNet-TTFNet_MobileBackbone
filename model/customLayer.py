@@ -1,6 +1,5 @@
 import tensorflow as tf
 import numpy as np
-import tensorflow_model_optimization as tfmot
 
 from tensorflow.keras import backend
 from tensorflow.keras.layers import Conv2D, BatchNormalization, Multiply, GlobalAveragePooling2D, \
@@ -11,37 +10,29 @@ def _depth(filters, multiplier=1.0, base=8):
     result=int(round_half_up * base)
     return max(result, base)
 
-class ReLU6(tf.keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
+class ReLU6(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     def call(self, inputs):
         return tf.nn.relu6(inputs)
-    def get_prunable_weights(self):
-        return []
 
-class HSigmoid6(tf.keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
+class HSigmoid6(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     def call(self, inputs):
         return tf.nn.relu6(inputs+np.float32(3)) * np.float32(1. / 6.)
-    def get_prunable_weights(self):
-        return []
 
-class HSwish6(tf.keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
+class HSwish6(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     def call(self, inputs):
         return inputs * tf.nn.relu6(inputs+np.float32(3)) * np.float32(1. / 6.)
-    def get_prunable_weights(self):
-        return []
 
-class Sigmoid(tf.keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
+class Sigmoid(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
     def call(self, inputs):
-        return tf.math.sigmoid(inputs)
-    def get_prunable_weights(self):
-        return []
+        return tf.nn.sigmoid(inputs)
 
 def _Conv(inputs, filters, kernel_size=3, strides=2, padding='same', 
         normalization=BatchNormalization, activation=ReLU6,
