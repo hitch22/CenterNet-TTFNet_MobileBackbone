@@ -23,9 +23,9 @@ class LabelEncoder():
         
         sorted_mask = tf.where(sorted_hm > 0, 1, 0)
         sorted_mask = sorted_mask*(tf.range(tf.shape(gt_boxes)[0])+1)
-        sorted_mask -= tf.reduce_max(sorted_mask, -1, keepdims=True)
-        priority_mask = tf.where(sorted_mask >= 0, True, False)
-        #priority_mask = tf.logical_and(tf.equal(tf.reduce_max(sorted_mask, axis=-1, keepdims=True), sorted_mask), sorted_mask > 0)
+        #sorted_mask -= tf.reduce_max(sorted_mask, -1, keepdims=True)
+        #priority_mask = tf.where(sorted_mask >= 0, True, False)
+        priority_mask = tf.logical_and(tf.equal(tf.reduce_max(sorted_mask, axis=-1, keepdims=True), sorted_mask), sorted_mask > 0)
 
         box_target = tf.tile(sorted_boxes[tf.newaxis, tf.newaxis, ...], [self.FeatureMapResolution,self.FeatureMapResolution,1,1])
         box_target = tf.reduce_max(tf.where(priority_mask[..., tf.newaxis], box_target, 0.0), -2)

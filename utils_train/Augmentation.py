@@ -2,6 +2,64 @@ import tensorflow as tf
 import random
 from utils_train.utils import CalculateIOA, scale
 
+
+
+def random_patch_gaussian(image,
+                          min_patch_size=1,
+                          max_patch_size=250,
+                          min_gaussian_stddev=0.0,
+                          max_gaussian_stddev=1.0,
+                          p=1.0):
+    '''
+        This patch code from TFOD API 
+            https://github.com/tensorflow/models/blob/master/research/object_detection/core/preprocessor.py
+     
+    '''
+    def _get_patch_mask(y, x, patch_size, image_shape):
+
+        image_hw = image_shape[:2]
+        mask_center_yx = tf.stack([y, x])
+        mask_center_yx = tf.identity(mask_center_yx)
+
+        half_patch_size = tf.cast(patch_size, dtype=tf.float32) / 2
+        start_yx = mask_center_yx - tf.cast(tf.floor(half_patch_size), dtype=tf.int32)
+        end_yx = mask_center_yx + tf.cast(tf.math.ceil(half_patch_size), dtype=tf.int32)
+
+        start_yx = tf.maximum(start_yx, 0)
+        end_yx = tf.minimum(end_yx, image_hw)
+
+        start_y = start_yx[0]
+        start_x = start_yx[1]
+        end_y = end_yx[0]
+        end_x = end_yx[1]
+
+        lower_pad = image_hw[0] - end_y
+        upper_pad = start_y
+        left_pad = start_x
+        right_pad = image_hw[1] - end_x
+        mask = tf.ones([end_y - start_y, end_x - start_x], dtype=tf.bool)
+        return tf.pad(mask, [[upper_pad, lower_pad], [left_pad, right_pad]])
+
+    if tf.random.uniform([], minval=0, maxval=1) > p:
+        return image
+
+    patch_size = tf.random.uniform([], minval=min_patch_size, maxval=max_patch_size, dtype=tf.int32)
+    gaussian_stddev = tf.random.uniform([], minval=min_gaussian_stddev, maxval=max_gaussian_stddev, dtype=tf.float32)
+
+    image_shape = tf.shape(image)
+    y = tf.random.uniform([], minval=0, maxval=image_shape[0], dtype=tf.int32)
+    x = tf.random.uniform([], minval=0, maxval=image_shape[1], dtype=tf.int32)
+    gaussian = tf.random.normal(image_shape, stddev=gaussian_stddev, dtype=tf.float32)
+
+    scaled_image = image / 255.0
+    image_plus_gaussian = tf.clip_by_value(scaled_image + gaussian, 0.0, 1.0)
+    patch_mask = _get_patch_mask(y, x, patch_size, image_shape)
+    patch_mask = tf.expand_dims(patch_mask, -1)
+    patch_mask = tf.tile(patch_mask, [1, 1, image_shape[2]])
+    patched_image = tf.where(patch_mask, image_plus_gaussian, scaled_image)
+    return patched_image * 255.0
+
+
 def randomResize(image, boxes, targetH, targetW, p = 1.0):
     def _keep_aspect_ratio(img, boxes, h, w):
         image_shape = tf.cast(tf.shape(img), tf.float32)
@@ -12,12 +70,6 @@ def randomResize(image, boxes, targetH, targetW, p = 1.0):
         h, w = tf.cast(h, dtype=tf.float32), tf.cast(w, dtype=tf.float32)
         resize_coef = tf.math.minimum(h / image_height, w / image_width)
 
-        ##
-        #img = tf.cond(resize_coef < 1, 
-        #                lambda: tf.image.resize_with_pad(img, h, w, tf.image.ResizeMethod.AREA),
-        #                lambda: tf.image.resize_with_pad(img, h, w, tf.image.ResizeMethod.BILINEAR))
-        ##
-
         resized_height, resized_width = image_height * resize_coef, image_width * resize_coef
         pad_y, pad_x = (h - resized_height) / 2, (w - resized_width) / 2
         boxes = boxes * tf.stack([resized_height, resized_width, resized_height, resized_width]) + \
@@ -27,15 +79,6 @@ def randomResize(image, boxes, targetH, targetW, p = 1.0):
         return img, boxes
 
     def _dont_keep_aspect_ration(img, boxes, h, w):
-        ##
-        '''image_shape = tf.cast(tf.shape(img), tf.float32)
-        image_height, image_width = image_shape[0], image_shape[1]
-        resize_coef = tf.math.minimum(h / image_height, w / image_width)
-
-        img = tf.cond(resize_coef < 1, 
-                        lambda: tf.image.resize(img, (h, w), tf.image.ResizeMethod.AREA),
-                        lambda: tf.image.resize(img, (h, w), tf.image.ResizeMethod.BILINEAR))'''
-        ##
         img = tf.image.resize(img, (h, w), antialias=True)
         return img, boxes
 
@@ -142,17 +185,17 @@ def colorJitter(image, p = 1.0):
         return image
 
     if tf.random.uniform([], minval=0, maxval=1) < p:
-        p *= 0.9
+        p *= p
         image = tf.image.random_brightness(image/255.0, 0.2)*255.0
         image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
 
     if tf.random.uniform([], minval=0, maxval=1) < p:
-        p *= 0.9
+        p *= p
         image = tf.image.random_contrast(image/255.0, 0.8, 1.25)*255.0
         image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
 
     if tf.random.uniform([], minval=0, maxval=1) < p:
-        p *= 0.9
+        p *= p
         image = tf.image.random_hue(image/255.0, 0.05)*255.0
         image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
 
@@ -172,37 +215,63 @@ def mixUp(images_one, images_two, bboxes_one, bboxes_two, classes_one, classes_t
     return images, tf.concat([bboxes_one, bboxes_two], 1), tf.concat([classes_one, classes_two], 1)
 
 
-def randomExpand(image, bbox, expandMax=0.6, p = 1.0):
-    if tf.random.uniform([], minval=0, maxval=1) > p:
-        return image, bbox
-        
-    original_w = tf.cast(tf.shape(image)[1], tf.float32)
-    original_h = tf.cast(tf.shape(image)[0], tf.float32)
+def randomExpand(image, bbox, expandMax=200, pad_color=tf.constant([0, 0, 0], tf.uint8), p = 1.0):
+    def _change_coordinate_frame(boxlist, window):
+            win_height = window[2] - window[0]
+            win_width = window[3] - window[1]
+            boxlist_new = scale(boxlist - [window[0], window[1], window[0], window[1]],
+                                1.0 / win_height, 
+                                1.0 / win_width)
+            return boxlist_new
 
-    expandYU = tf.random.uniform(shape = [], minval=0.0, maxval=expandMax, dtype=tf.float32)
-    expandYD = tf.random.uniform(shape = [], minval=0.0, maxval=expandMax, dtype=tf.float32)
+    image_shape = tf.shape(image)
+    image_height = image_shape[0]
+    image_width = image_shape[1]
 
-    expandXL = tf.random.uniform(shape = [], minval=0.0, maxval=expandMax, dtype=tf.float32)
-    expandXR = tf.random.uniform(shape = [], minval=0.0, maxval=expandMax, dtype=tf.float32)
+    min_image_size = tf.shape(image)[:2]
+    max_image_size = min_image_size + tf.cast([expandMax, expandMax], dtype=tf.int32)
 
-    HUPad = tf.zeros([tf.cast(expandYU*original_h, tf.int32), tf.cast(original_w, tf.int32), 3], image.dtype)
-    HDPad = tf.zeros([tf.cast(expandYD*original_h, tf.int32), tf.cast(original_w, tf.int32), 3], image.dtype)
-    newImage = tf.concat([HUPad, image, HDPad], 0)
+    target_height = tf.cond(
+        max_image_size[0] > min_image_size[0],
+        lambda: tf.random.uniform([], minval=min_image_size[0], maxval=max_image_size[0], dtype=tf.int32),
+        lambda: max_image_size[0])
 
-    hpadded_w = tf.cast(tf.shape(newImage)[1], tf.float32)
-    hpadded_h = tf.cast(tf.shape(newImage)[0], tf.float32)
+    target_width = tf.cond(
+        max_image_size[1] > min_image_size[1],
+        lambda: tf.random.uniform([], minval=min_image_size[1], maxval=max_image_size[1], dtype=tf.int32),
+        lambda: max_image_size[1])
 
-    WLPad = tf.zeros([tf.cast(hpadded_h, tf.int32), tf.cast(expandXL*original_w, tf.int32), 3], image.dtype)
-    WRPad = tf.zeros([tf.cast(hpadded_h, tf.int32), tf.cast(expandXR*original_w, tf.int32), 3], image.dtype)
-    newImage = tf.concat([WLPad, newImage, WRPad], 1)
 
-    new_bbox = tf.stack([
-            ((bbox[..., 0] + expandYU)/(expandYU + expandYD + 1.0)),
-            ((bbox[..., 1] + expandXL)/(expandXL + expandXR + 1.0)),
-            ((bbox[..., 2] + expandYU)/(expandYU + expandYD + 1.0)),
-            ((bbox[..., 3] + expandXL)/(expandXL + expandXR + 1.0))
-        ], axis= -1)
-    return newImage, new_bbox
+    offset_height = tf.cond(
+        target_height > image_height,
+        lambda: tf.random.uniform([], minval=0, maxval=target_height - image_height, dtype=tf.int32),
+        lambda: tf.constant(0, dtype=tf.int32))
+
+    offset_width = tf.cond(
+        target_width > image_width,
+        lambda: tf.random.uniform([], minval=0, maxval=target_width - image_width, dtype=tf.int32),
+        lambda: tf.constant(0, dtype=tf.int32))
+
+    new_image = tf.image.pad_to_bounding_box(image,
+                                            offset_height=offset_height,
+                                            offset_width=offset_width,
+                                            target_height=target_height,
+                                            target_width=target_width)
+
+    '''image_ones = tf.ones_like(image)
+    image_ones_padded = tf.image.pad_to_bounding_box(
+        image_ones,
+        offset_height=offset_height,
+        offset_width=offset_width,
+        target_height=target_height,
+        target_width=target_width)
+    image_color_padded = (1.0 - image_ones_padded) * pad_color
+    new_image += image_color_padded'''
+
+    new_window = tf.cast(tf.stack([-offset_height, -offset_width, target_height - offset_height, target_width - offset_width]),dtype=tf.float32)
+    new_window /= tf.cast(tf.stack([image_height, image_width, image_height, image_width]), dtype=tf.float32)
+    new_bbox = _change_coordinate_frame(bbox, new_window)
+    return new_image, new_bbox
 
 def mixUp(ds1, ds2):
     def _sample_beta_distribution(size, concentration_0=0.5, concentration_1=0.5):

@@ -20,7 +20,6 @@ def nms(heat, kernel=3):
     return heat_max_peak
 
 def decode(detections, k=100, isCenter=False):
-    #heatmap=tf.nn.sigmoid(detections[..., :80])
     heatmap=detections[..., :80]
     wh=detections[..., 80:84]
 
