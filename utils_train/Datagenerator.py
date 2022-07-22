@@ -32,10 +32,10 @@ class DatasetBuilder():
 
         if self.mode == 'train' or self.mode == 'bboxtest':
             image, bbox, classes  = randomCrop(image, bbox, classes, p = 0.75)
-            image, bbox           = randomExpand(image, bbox, 1.0)
+            #image, bbox           = randomExpand(image, bbox, expandMax=200.0)
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
             image, bbox           = flipHorizontal(image, bbox, p = 0.5)
-            image                 = random_patch_gaussian(image)
+            #image                 = random_patch_gaussian(image)
             image                 = colorJitter(image, p = 0.7)
         else:
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)

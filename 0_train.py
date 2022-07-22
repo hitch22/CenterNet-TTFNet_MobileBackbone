@@ -1,5 +1,7 @@
-import tensorflow as tf
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import tensorflow as tf
 import json
 import tensorboard
 
@@ -10,10 +12,6 @@ from utils_train.customLoss import CenterNetLoss, TTFNetLoss
 from utils_train.customCallback import CallbackBuilder
 from utils_train.customOptimizer import GCSGD
 from utils_train.Datagenerator import Dataset_COCO, Dataset_Pascal, Dataset_COCO_Temp
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-#os.environ['TF_XLA_FLAGS'] = "--tf_xla_auto_jit=2 --tf_xla_cpu_global_jit"
 
 flags.DEFINE_boolean(
     name='fp16',
@@ -36,10 +34,10 @@ def main(_argv):
     tf.config.optimizer.set_jit("autoclustering")
     tf.random.set_seed(22)
     logging.set_verbosity(logging.WARNING)
+    strategy = tf.distribute.MirroredStrategy()
 
-    optimizer = GCSGD(momentum=0.9, nesterov=False)
-    #optimizer = tf.keras.optimizers.Adam()
-    #optimizer = tf.keras.optimizers.SGD(momentum=0.9, nesterov=False)
+    #optimizer = GCSGD(momentum=0.9, nesterov=False)
+    optimizer = tf.keras.optimizers.SGD(momentum=0.9, nesterov=False)
     if FLAGS.fp16:
         logging.warning('Training Precision: FP16')
         tf.keras.mixed_precision.set_global_policy(tf.keras.mixed_precision.Policy('mixed_float16'))
@@ -67,26 +65,26 @@ def main(_argv):
 
 
     if config["model_config"]["head"]["name"].upper() in ["CENTERNET"]:
-        logging.warning('Loss Function: CenterNetLoss')
         loss_fn = CenterNetLoss(config)
     elif config["model_config"]["head"]["name"].upper() in ["TTFNET"]:
-        logging.warning('Loss Function: TTFNetLoss')
         loss_fn = TTFNetLoss(config)
 
     ######################################### Compile
-    config['modelName'] = modelName
-    model = ModelBuilder(config = config)
-    #model.load_weights("logs/_epoch600_mAP0.132").expect_partial()
+    config['modelName'] = modelName    
 
-    print(model)
-    model.compile(loss=loss_fn, optimizer=optimizer, weighted_metrics=[])
+    with strategy.scope():
+        model = ModelBuilder(config = config)
+        #model.load_weights("logs/_epoch600_mAP0.132").expect_partial()
+        model.compile(loss=loss_fn, optimizer=optimizer, weighted_metrics=[])
+        print(model)
+        
     model.fit(train_dataset.dataset,
-            epochs=config["training_config"]["epochs"],
-            #steps_per_epoch = len(train_dataset),
-            initial_epoch=0,
-            validation_data=test_dataset.dataset,
-            callbacks=CallbackBuilder(config, test_dataset.dataset, val_file).get_callbacks()
-            )
+                epochs=config["training_config"]["epochs"],
+                #steps_per_epoch = len(train_dataset),
+                initial_epoch=0,
+                validation_data=test_dataset.dataset,
+                callbacks=CallbackBuilder(config, test_dataset.dataset, val_file).get_callbacks()
+                )
 
 if __name__ =="__main__":
     app.run(main)

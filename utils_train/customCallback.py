@@ -128,9 +128,6 @@ class Logger(tf.keras.callbacks.Callback):
                 for keys in logs:
                     if keys.startswith('val_'):
                         tf.summary.scalar(name=keys[4:], data=logs[keys], step=epoch)
-
-        #self._train_summary.flush()
-        #self._valid_summary.flush()
             
     def _write_mAP(self, scores, epoch):
         with self._valid_summary.as_default():
@@ -138,7 +135,6 @@ class Logger(tf.keras.callbacks.Callback):
                 for key, value in scores.items():
                     tf.summary.scalar(name=key, data=value, step=epoch)
 
-        #self._valid_summary.flush()
 
     def _cocoeval(self, epoch, catIds = None):
         self._processed_detections = []
@@ -160,8 +156,9 @@ class Logger(tf.keras.callbacks.Callback):
             cocoEval.accumulate()
             cocoEval.summarize()
 
-            self.model.save_weights(os.path.join(self.weightsave_path, "weights", "_epoch"+str(epoch+1)+"_mAP"+'%.3f'%cocoEval.stats[0]))
-
+            #self.model.save_weights(os.path.join(self.weightsave_path, "weights", "_epoch"+str(epoch+1)+"_mAP"+'%.3f'%cocoEval.stats[0]))
+            self.model.save(os.path.join(self.weightsave_path, "weights", "_epoch"+str(epoch+1)+"_mAP"+'%.3f'%cocoEval.stats[0]))
+            
             scores = {
                 'AP-IoU=0.50:0.95': cocoEval.stats[0],
                 'AP-IoU=0.50': cocoEval.stats[1],
@@ -188,6 +185,12 @@ class CallbackBuilder():
                                         warmup_learning_rate = config["training_config"]["initial_learning_rate"]/2,
                                         warmup_steps = 1,
                                         total_steps = config["training_config"]["epochs"]))
+
+        '''self.LrScheduler = tf.keras.callbacks.LearningRateScheduler(
+            tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+                                        boundaries=[100],
+                                        values=[5e-2, 1e-5])
+                                        )'''
 
     def get_callbacks(self):
         callbacks_list = [self.Logger, self.LrScheduler] 

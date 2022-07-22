@@ -6,12 +6,13 @@ from model.Neck.builder import NeckBuild
 from model.Head.builder import HeadBuild
 
 _policy=tf.keras.mixed_precision.global_policy()
+strategy = tf.distribute.get_strategy()
 
 def get_scaled_losses(loss, regularization_losses=None):
     loss = tf.reduce_mean(loss)
     if regularization_losses:
         loss = loss + tf.math.add_n(regularization_losses)
-    return loss
+    return loss/strategy.num_replicas_in_sync
 
 def nms(heat, kernel=3):
     heat_max = tf.keras.layers.MaxPooling2D(kernel, 1, padding="same", dtype = _policy.compute_dtype)(heat)
@@ -120,7 +121,7 @@ class ModelBuilder(tf.keras.Model):
         loss_dict={
                     'HeatL': self.heat_loss_tracker.result(),
                     'BoxL': self.box_loss_tracker.result(),
-                    'RegL': tf.reduce_mean(self.losses),
+                    'RegL': tf.math.add_n(self.losses),
                     'TotalL': self.total_loss_tracker.result()
                 }
         
@@ -153,7 +154,7 @@ class ModelBuilder(tf.keras.Model):
         predictions=self(images, training=False)
         return decode(predictions, isCenter = self.isCenter)
 
-    def __repr__(self, table=False):
+    def __repr__(self, table=True):
         print_str=''
         if table:
             print_str += '%25s | %16s | %20s | %10s | %16s | %6s | %6s\n' % (
@@ -164,7 +165,7 @@ class ModelBuilder(tf.keras.Model):
         t_macc = 0
 
         for l in self.layers:
-            o_shape, i_shape, strides, ks, filters = ['', '', ''], ['', '', ''], [1, 1], 'N/A', 'N/A'
+            o_shape, i_shape, strides, ks, filters = ['', '', ''], ['', '', ''], '', '', ''
             flops = 0
             macc = 0
             name = l.name
@@ -277,6 +278,7 @@ class ModelBuilder(tf.keras.Model):
         none_trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.non_trainable_weights])
         total_params = trainable_params+none_trainable_params
 
-        print_str += 'Total Params: %6.3f[M]\n' % (total_params/1e6)+'Trainable Params: %6.3f[M]' % (trainable_params/1e6)+ \
-        '\nTotal FLOPS: %6.3f[G]\n' % (t_flops/1e9)+'Total MACCs: %6.3f[G]' % (t_macc/1e9)
+        print_str += '-' * 170
+        print_str += '         Total Params: %6.3f[M]  ' % (total_params/1e6)+'Trainable Params: %6.3f[M]  ' % (trainable_params/1e6)+ \
+        'Total FLOPS: %6.3f[G]  ' % (t_flops/1e9)+'Total MACCs: %6.3f[G]' % (t_macc/1e9)
         return print_str

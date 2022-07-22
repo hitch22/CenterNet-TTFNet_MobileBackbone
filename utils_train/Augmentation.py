@@ -215,7 +215,7 @@ def mixUp(images_one, images_two, bboxes_one, bboxes_two, classes_one, classes_t
     return images, tf.concat([bboxes_one, bboxes_two], 1), tf.concat([classes_one, classes_two], 1)
 
 
-def randomExpand(image, bbox, expandMax=200, pad_color=tf.constant([0, 0, 0], tf.uint8), p = 1.0):
+def randomExpand(image, bbox, expandMax=200):
     def _change_coordinate_frame(boxlist, window):
             win_height = window[2] - window[0]
             win_width = window[3] - window[1]
