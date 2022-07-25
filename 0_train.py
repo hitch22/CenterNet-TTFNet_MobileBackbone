@@ -1,5 +1,6 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_GPU_THREAD_MODE'] = 'gpu_private'
 
 import tensorflow as tf
 import json
