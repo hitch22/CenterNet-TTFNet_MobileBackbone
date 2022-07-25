@@ -8,15 +8,14 @@
             "name":"MobileNetV3",
             "width_multiplier": 1.0,
             "modelSize":"large",
-            "regularization":1e-5,
+            "regularization":0.0,
             "isFreeze":false
         },
         "neck":
-        {   "name":"FPN",
-            "aggregation":"add",
-            "isLite": true,
+        {   "name":"UpUp",
+            "upsample":"Tconv",
             "filters": [64, 32, 24, 24],
-            "regularization":1e-5,
+            "regularization":0.0,
             "isFreeze":false
         },
         "head":
@@ -24,7 +23,7 @@
             "name": "TTFNet",
             "isLite": true,
             "filters": 256,
-            "regularization":1e-5,
+            "regularization":0.0,
             "isFreeze":false
         } 
     },

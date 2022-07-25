@@ -132,3 +132,4 @@ utils_train/.DS_Store
 logs/
 data/
 data/inference.json
+nohup.out

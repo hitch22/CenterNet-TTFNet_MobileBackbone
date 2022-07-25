@@ -1,10 +1,32 @@
 import tensorflow as tf
 import random
+import tensorflow_addons as tfa
+
 from utils_train.utils import CalculateIOA, scale
 
+def randomCutout(image):
+    #def _makeMask(h, w):
 
+    h, w, _ = tf.unstack(tf.shape(image))
+    mask_size=random.choice([40, 60])
+    x_start = random.choice([-5, 10, 20])
+    y_start = random.choice([-5, 10, 20])
 
-def random_patch_gaussian(image,
+    y_iter = h//(mask_size*2)+1
+    x_iter = w//(mask_size*2)+1
+    if len(image.get_shape().as_list()) == 3:
+        image = tf.expand_dims(image, 0)
+        for i in range(x_iter):
+            for j in range(y_iter):
+                image = tfa.image.cutout(image, mask_size, [y_start+mask_size*j*2, x_start+mask_size*i*2])
+        return image[0]
+    else:
+        for i in range(x_iter):
+            for j in range(y_iter):
+                image = tfa.image.cutout(image, mask_size, [y_start+mask_size*j*2, x_start+mask_size*i*2])
+        return image
+
+def randomGaussian(image,
                           min_patch_size=1,
                           max_patch_size=250,
                           min_gaussian_stddev=0.0,

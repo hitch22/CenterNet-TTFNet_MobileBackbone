@@ -157,17 +157,13 @@ class ModelBuilder(tf.keras.Model):
     def __repr__(self, table=True):
         print_str=''
         if table:
-            print_str += '%25s | %16s | %20s | %10s | %16s | %6s | %6s\n' % (
-                'Layer Name', 'Input Shape', 'Output Shape', 'Kernel Size', 'Filters', 'Strides', 'FLOPS')
-            print_str += '-' * 170
-            print_str += '\n'
+            print_str += '%20s | %16s | %20s | %10s | %10s | %6s | %6s\n'%( 'Layer Name', 'Input Shape', 'Output Shape', 'Kernel Size', 'Filters', 'Strides', 'FLOPs')
+            print_str += '-'*170+'\n'
         t_flops = 0
-        t_macc = 0
 
         for l in self.layers:
             o_shape, i_shape, strides, ks, filters = ['', '', ''], ['', '', ''], '', '', ''
             flops = 0
-            macc = 0
             name = l.name
 
             if ('InputLayer' in str(l)):
@@ -181,12 +177,12 @@ class ModelBuilder(tf.keras.Model):
             if ('Add' in str(l) or 'Maximum' in str(l) or 'Concatenate' in str(l)):
                 i_shape = l.input[0].get_shape()[1:4].as_list() + [len(l.input)]
                 o_shape = l.output.get_shape()[1:4].as_list()
-                flops = (len(l.input) - 1) * i_shape[0] * i_shape[1] * i_shape[2]
+                flops = (len(l.input) - 1)*i_shape[0]*i_shape[1]*i_shape[2]
 
             if ('Average' in str(l) and 'pool' not in str(l)):
                 i_shape = l.input[0].get_shape()[1:4].as_list() + [len(l.input)]
                 o_shape = l.output.get_shape()[1:4].as_list()
-                flops = len(l.input) * i_shape[0] * i_shape[1] * i_shape[2]
+                flops = len(l.input)*i_shape[0]*i_shape[1]*i_shape[2]
 
             if ('BatchNormalization' in str(l)):
                 i_shape = l.input.get_shape()[1:4].as_list()
@@ -209,7 +205,7 @@ class ModelBuilder(tf.keras.Model):
                 i_shape = l.input.get_shape()[1:4].as_list()
                 strides = l.strides
                 ks = l.pool_size
-                flops = ((i_shape[0] / strides[0]) * (i_shape[1] / strides[1]) * (ks[0] * ks[1] * i_shape[2]))
+                flops = ((i_shape[0] / strides[0])*(i_shape[1] / strides[1])*(ks[0]*ks[1]*i_shape[2]))
 
             if ('Flatten' in str(l)):
                 i_shape = l.input.shape[1:4].as_list()
@@ -227,7 +223,7 @@ class ModelBuilder(tf.keras.Model):
                     i_shape = out_vec
 
                 o_shape = l.output.shape[1:4].as_list()
-                flops = 2 * (o_shape[0] * i_shape)
+                flops = 2*(o_shape[0]*i_shape)
                 macc = flops / 2
 
             if ('Padding' in str(l)):
@@ -235,50 +231,32 @@ class ModelBuilder(tf.keras.Model):
 
             if (('Global' in str(l))):
                 i_shape = l.input.get_shape()[1:4].as_list()
-                flops = ((i_shape[0]) * (i_shape[1]) * (i_shape[2]))
+                flops = ((i_shape[0])*(i_shape[1])*(i_shape[2]))
                 o_shape = [l.output.get_shape()[1:4].as_list(), 1, 1]
                 out_vec = o_shape
-
-            if ('Conv2D ' in str(l) and 'DepthwiseConv2D' not in str(l) and 'SeparableConv2D' not in str(l)):
+            
+            _layername = str(l).lower()
+            if 'conv2d ' in _layername:
                 strides = l.strides
                 ks = l.kernel_size
-                filters = l.filters
+                filters = l.filters if l.filters else 1
                 i_shape = l.input.get_shape()[1:4].as_list()
                 o_shape = l.output.get_shape()[1:4].as_list()
+                if 'separableconv2D' in _layername:
+                    flops = i_shape[2]*(filters+ks[0]*ks[1])*(i_shape[0]/strides[0])*(i_shape[1]/strides[1])
+                else:
+                    flops = i_shape[2]*(filters*ks[0]*ks[1])*(i_shape[0]/strides[0])*(i_shape[1]/strides[1])
 
-                if (filters == None):
-                    filters = i_shape[2]
-
-                flops = 2 * ((filters * ks[0] * ks[1] * i_shape[2]) * (
-                        (i_shape[0] / strides[0]) * (i_shape[1] / strides[1])))
-                macc = flops / 2
-
-            if ('Conv2D ' in str(l) and 'DepthwiseConv2D' in str(l) and 'SeparableConv2D' not in str(l)):
-                strides = l.strides
-                ks = l.kernel_size
-                filters = l.filters
-                i_shape = l.input.get_shape()[1:4].as_list()
-                o_shape = l.output.get_shape()[1:4].as_list()
-
-                if (filters == None):
-                    filters = i_shape[2]
-
-                flops = 2 * (
-                        (ks[0] * ks[1] * i_shape[2]) * ((i_shape[0] / strides[0]) * (i_shape[1] / strides[1]))) 
-                macc = flops / 2
-
-            t_macc += macc
             t_flops += flops
-
             if table:
-                print_str += '%25s | %16s | %20s | %10s | %16s | %6s | %5.2f[M]\n' % (
-                    name, str(i_shape), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
+                print_str += '%20s | %16s | %20s | %10s | %10s | %6s | %5.2f[M]\n'%(name, str(i_shape), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
 
         trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.trainable_weights])
         none_trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.non_trainable_weights])
         total_params = trainable_params+none_trainable_params
 
-        print_str += '-' * 170
+        print_str += '-'*170+'\n'
         print_str += '         Total Params: %6.3f[M]  ' % (total_params/1e6)+'Trainable Params: %6.3f[M]  ' % (trainable_params/1e6)+ \
-        'Total FLOPS: %6.3f[G]  ' % (t_flops/1e9)+'Total MACCs: %6.3f[G]' % (t_macc/1e9)
+        'Total FLOPS: %6.3f[G]  ' % (t_flops/1e9)
         return print_str
+

@@ -36,8 +36,8 @@ def main(_argv):
     logging.set_verbosity(logging.WARNING)
     strategy = tf.distribute.MirroredStrategy()
 
-    #optimizer = GCSGD(momentum=0.9, nesterov=False)
-    optimizer = tf.keras.optimizers.SGD(momentum=0.9, nesterov=False)
+    optimizer = GCSGD(momentum=0.9, nesterov=False)
+    #optimizer = tf.keras.optimizers.SGD(momentum=0.9, nesterov=False)
     if FLAGS.fp16:
         logging.warning('Training Precision: FP16')
         tf.keras.mixed_precision.set_global_policy(tf.keras.mixed_precision.Policy('mixed_float16'))

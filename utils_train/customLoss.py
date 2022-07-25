@@ -43,7 +43,6 @@ class IOU(tf.losses.Loss):
         logging.warning('IOULoss: {}'.format(self.mode))
 
         h = w = config['model_config']['target_size']//4
-        #x_grid, y_gird = tf.meshgrid(tf.range(h, dtype=_policy.compute_dtype), tf.range(w, dtype= _policy.compute_dtype))
         x_grid, y_gird = tf.meshgrid(tf.range(0.0, 1.0, 1.0/h, dtype=tf.float32), tf.range(0.0, 1.0, 1.0/w, dtype=tf.float32))
         self.grid = tf.stack([y_gird, x_grid], -1)
 
@@ -90,10 +89,12 @@ class IOU(tf.losses.Loss):
         iou = tf.math.divide_no_nan(inner_intersection_area, union_area)
 
         if self.mode == "IOU":
+            print("TP1")
             iou_loss = tf.clip_by_value(iou, 1e-4, 1.0)
             return -tf.math.log(iou_loss)
 
         elif self.mode =="GIOU":
+            print("TP2")
             enclose_area = enclose_intersection[..., 0] * enclose_intersection[..., 1]
             gterm = tf.math.divide_no_nan((enclose_area - union_area), enclose_area)
             return 1-tf.clip_by_value(iou-gterm, -1.0, 1.0)
@@ -104,9 +105,11 @@ class IOU(tf.losses.Loss):
             u = tf.math.divide_no_nan(center_distance_square, diagonal_distance_square)
 
             if self.mode == "DIOU":
+                print("TP3")
                 return 1-tf.clip_by_value(iou-u, -1.0, 1.0)
 
             elif self.mode == "CIOU":
+                print("TP4")
                 w_gt = b1[..., 2] - b1[..., 0]
                 h_gt = b1[..., 3] - b1[..., 1]
                 w_pred = b2[..., 2] - b2[..., 0]
@@ -129,7 +132,8 @@ class HeatmapFocal(tf.losses.Loss):
         self._alpha = alpha
         self._gamma = gamma
 
-    def call(self, hm_true, hm_pred):        
+    def call(self, hm_true, hm_pred):
+        hm_pred = tf.clip_by_value(hm_pred, 1e-4, 1-1e-4)
         pos_mask = tf.math.equal(hm_true, 1.0)
 
         loss = -tf.where(pos_mask, \
