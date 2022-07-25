@@ -157,7 +157,7 @@ class ModelBuilder(tf.keras.Model):
     def __repr__(self, table=True):
         print_str=''
         if table:
-            print_str += '%25s | %16s | %20s | %10s | %10s | %6s | %6s\n'%( 'Layer Name', 'Input Shape', 'Output Shape', 'Kernel Size', 'Filters', 'Strides', 'FLOPs')
+            print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7s\n'%( 'Layer Name', 'Input Shape', 'Output Shape', 'Kernel Size', 'Filters', 'Strides', 'FLOPs')
             print_str += '-'*170+'\n'
         t_flops = 0
 
@@ -260,11 +260,11 @@ class ModelBuilder(tf.keras.Model):
             t_flops += flops
             if table:
                 if isinstance(i_shape[0], list):
-                    print_str += '%25s | %16s | %20s | %10s | %10s | %6s | %5.2f[M]\n'%(name, str(i_shape[0]), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
+                    print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7.2f[M]\n'%(name, str(i_shape[0]), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
                     for idx in range(len(i_shape)-1):
                         print_str += '%44s | \n'%(str(i_shape[idx+1]))
                 else:
-                    print_str += '%25s | %16s | %20s | %10s | %10s | %6s | %5.2f[M]\n'%(name, str(i_shape), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
+                    print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7.2f[M]\n'%(name, str(i_shape), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
 
         trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.trainable_weights])
         none_trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.non_trainable_weights])

@@ -75,7 +75,8 @@ def main(_argv):
 
     with strategy.scope():
         model = ModelBuilder(config = config)
-        #model.load_weights("logs/_epoch600_mAP0.132").expect_partial()
+        #model = tf.keras.models.load_model("logs/MobileNetV3_FPN_TTFNet/weights/_epoch270_mAP0.215")
+        #model.load_weights("logs/MobileNetV3_FPN_TTFNet/weights/_epoch270_mAP0.215")
         model.compile(loss=loss_fn, optimizer=optimizer, weighted_metrics=[])
         print(model)
         

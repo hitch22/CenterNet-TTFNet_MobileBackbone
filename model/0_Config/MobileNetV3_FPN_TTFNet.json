@@ -41,7 +41,7 @@
 
         "BoxLoss": 
         {
-            "LossFunction": "diou",
+            "LossFunction": "giou",
             "Weight" : 5.0
         },
         "batch_size": 64,

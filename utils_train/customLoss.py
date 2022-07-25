@@ -89,12 +89,10 @@ class IOU(tf.losses.Loss):
         iou = tf.math.divide_no_nan(inner_intersection_area, union_area)
 
         if self.mode == "IOU":
-            print("TP1")
             iou_loss = tf.clip_by_value(iou, 1e-4, 1.0)
             return -tf.math.log(iou_loss)
 
         elif self.mode =="GIOU":
-            print("TP2")
             enclose_area = enclose_intersection[..., 0] * enclose_intersection[..., 1]
             gterm = tf.math.divide_no_nan((enclose_area - union_area), enclose_area)
             return 1-tf.clip_by_value(iou-gterm, -1.0, 1.0)
@@ -105,11 +103,9 @@ class IOU(tf.losses.Loss):
             u = tf.math.divide_no_nan(center_distance_square, diagonal_distance_square)
 
             if self.mode == "DIOU":
-                print("TP3")
                 return 1-tf.clip_by_value(iou-u, -1.0, 1.0)
 
             elif self.mode == "CIOU":
-                print("TP4")
                 w_gt = b1[..., 2] - b1[..., 0]
                 h_gt = b1[..., 3] - b1[..., 1]
                 w_pred = b2[..., 2] - b2[..., 0]
