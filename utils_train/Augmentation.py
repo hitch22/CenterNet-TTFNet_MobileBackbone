@@ -5,8 +5,6 @@ import tensorflow_addons as tfa
 from utils_train.utils import CalculateIOA, scale
 
 def randomCutout(image):
-    #def _makeMask(h, w):
-
     h, w, _ = tf.unstack(tf.shape(image))
     mask_size=random.choice([40, 60])
     x_start = random.choice([-5, 10, 20])
@@ -180,7 +178,7 @@ def randomCrop(image, bbox, class_id, p = 1.0):
     im_box_begin, im_box_size, im_box = tf.image.sample_distorted_bounding_box(image_shape,
                                                             bounding_boxes=boxes_expanded,
                                                             min_object_covered=random.choice(random_option),
-                                                            aspect_ratio_range=[3/4, 4/3],
+                                                            aspect_ratio_range=[0.5, 2.0],
                                                             area_range=[0.1, 1],
                                                             max_attempts=100,
                                                             use_image_if_no_bounding_boxes=False)
@@ -225,6 +223,7 @@ def colorJitter(image, p = 1.0):
         image = tf.image.random_saturation(image/255.0, 0.5, 1.5)*255.0
         image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
     return image
+
 
 
 def mixUp(images_one, images_two, bboxes_one, bboxes_two, classes_one, classes_two):
@@ -335,6 +334,5 @@ def mosaic(ds1, ds2, ds3, ds4):
     bboxes4 = tf.stack([1-border[0], 1-border[1], 1-border[0], 1-border[1]], -1)*bboxes4+tf.stack([border[0],border[1],0.0,0.0], -1)
 
     output_boxes = tf.concat([bboxes1, bboxes2, bboxes3, bboxes4], 0)
-
     output_classes = tf.concat([classes1, classes2, classes3, classes4], 0)
     return output_image, output_boxes, output_classes

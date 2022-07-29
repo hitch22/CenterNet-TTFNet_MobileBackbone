@@ -176,7 +176,6 @@ class ModelBuilder(tf.keras.Model):
 
             elif 'add' in _layername or 'multiply' in _layername or 'maximum' in _layername or 'concatenate' in _layername:
                 i_shape = [l_input.get_shape()[1:].as_list() for l_input in l.input]
-                #i_shape = l.input.get_shape()[1:].as_list()
                 o_shape = l.output.get_shape()[1:].as_list()                
                 flops = (len(i_shape) - 1)
                 for i in i_shape[0]:

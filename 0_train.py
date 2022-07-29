@@ -12,7 +12,7 @@ from model.ModelBuilder import ModelBuilder
 from utils_train.customLoss import CenterNetLoss, TTFNetLoss
 from utils_train.customCallback import CallbackBuilder
 from utils_train.customOptimizer import GCSGD
-from utils_train.Datagenerator import Dataset_COCO, Dataset_Pascal, Dataset_COCO_Temp
+from utils_train.Datagenerator import Dataset_COCO, Dataset_COCO_Temp
 
 flags.DEFINE_boolean(
     name='fp16',

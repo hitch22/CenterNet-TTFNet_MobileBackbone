@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
+import keras_cv
 
 from utils_train.Augmentation import *
 from utils_train.Encoder import LabelEncoder
@@ -12,7 +13,6 @@ class DatasetBuilder():
         self._label_encoder = LabelEncoder(config)
         self._target_size = config["model_config"]["target_size"]
         self._batch_size = config["training_config"]["batch_size"]
-
         self.mode = mode
         self._build_dataset()
     
@@ -36,8 +36,9 @@ class DatasetBuilder():
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
             #image                 = randomCutout(image)
             image, bbox           = flipHorizontal(image, bbox, p = 0.5)
-            #image                 = random_patch_gaussian(image)
+            #image                 = randomGaussian(image)
             image                 = colorJitter(image, p = 0.7)
+
         else:
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
 
@@ -46,25 +47,6 @@ class DatasetBuilder():
             return (image/127.5) -1.0,  self._label_encoder._encode_sample(bbox, classes)
         else:
             return (image/127.5) -1.0, self._label_encoder._encode_sample(bbox, classes), inferMetric
-
-    def _preprocess_after_batch(self, ds1, ds2, ds3, ds4):
-        inner_p = tf.random.uniform([], minval=0, maxval=1)
-
-        if inner_p < 0.0:
-            image, bbox, classes = mixUp(ds1, ds2)
-
-        elif inner_p < 0.99 and inner_p >= 0.0:
-            image, bbox, classes = mosaic(ds1, ds2, ds3, ds4)
-            
-        else:
-            images_one, bboxes_one, classes_one = ds1
-            images_two, bboxes_two, classes_two = ds2
-            image = images_one
-            bbox = bboxes_one
-            classes = classes_one
-
-        #return image, bbox, classes
-        return image, self._label_encoder._encode_sample(bbox, classes)
 
     def _build_dataset(self):
         pass
@@ -129,59 +111,6 @@ class Dataset_COCO(DatasetBuilder):
                 .map(self._preprocess_before_batch, num_parallel_calls=tf.data.AUTOTUNE)
             )
 
-class Dataset_Pascal(DatasetBuilder):
-    def __init__(self, config, mode='train'):
-        super().__init__(config, mode)
-
-    def _prepare_proto(self, samples):
-        image = samples["image"]
-        originalShape = tf.shape(image)[:2]
-        classes = tf.cast(samples["objects"]["label"], dtype=tf.int32)
-        bbox = samples["objects"]["bbox"]
-        ####################################
-        validboxMask = tf.reduce_all(bbox[..., 2:] > bbox[..., :2], -1)
-        classes = tf.boolean_mask(classes, validboxMask)
-        bbox = tf.boolean_mask(bbox, validboxMask)
-
-        cocoLabel = {"original_shape": originalShape, "image_id": samples['image/filename']}
-
-        return image, bbox, classes, cocoLabel
-
-    def _build_dataset(self):
-        if self.mode == 'train' or self.mode == 'bboxtest':
-             [ds1, ds2], dataset_info = tfds.load(name="voc/2007", split=["train", 'validation'], with_info=True, shuffle_files=True)
-             self._tfrecords = ds1.concatenate(ds2)
-             self.labelMapFunc = dataset_info.features["objects"]["label"].int2str
-        else:
-             [self._tfrecords] = tfds.load(name="voc/2007", split=["test"], with_info=False, shuffle_files=False)
-
-        self._tfrecords = self._tfrecords.filter(lambda samples: len(samples["objects"]["label"]) >= 1) #117266 #4952  and tf.reduce_any(samples["objects"]["label"] == 0)
-        
-        if self.mode == 'train':
-            self._dataset = (
-                self._tfrecords
-                #.repeat()
-                .shuffle(8*self._batch_size, reshuffle_each_iteration=False)
-                .map(self._preprocess_before_batch, num_parallel_calls=tf.data.AUTOTUNE)
-                .batch(batch_size=self._batch_size, drop_remainder = True)
-                .prefetch(tf.data.AUTOTUNE)
-            )
-
-        elif self.mode == 'validation':
-            self._dataset = (
-                self._tfrecords
-                .map(self._preprocess_before_batch, num_parallel_calls=tf.data.AUTOTUNE)
-                .batch(batch_size=self._batch_size, drop_remainder = False)
-                .prefetch(tf.data.AUTOTUNE)
-            )
-        else:
-            self._dataset = (
-                self._tfrecords
-                .map(self._preprocess_before_batch, num_parallel_calls=tf.data.AUTOTUNE)
-            )
-    def __len__(self):
-        return int(117266/self._batch_size)
-        
 class Datase_Custom(DatasetBuilder):
     def __init__(self,  config, mode='train'):
         super().__init__(config, mode)
@@ -261,6 +190,37 @@ class Dataset_COCO_Temp(DatasetBuilder):
         cocoLabel = {"original_shape": originalShape, "image_id": samples['image/id']}
 
         return image, bbox, classes, cocoLabel
+
+    def _preprocess_before_batch(self, samples):
+        '''
+            in_bbox_format: [ymin xmin ymax xmax]
+            out_bbox_format: [cy cx h w]
+        '''
+
+        image, bbox, classes, inferMetric = self._prepare_proto(samples)
+
+        if self.mode == 'train' or self.mode == 'bboxtest':
+            #image                 = colorJitter(image, p = 0.7)
+            #image, bbox           = randomExpand(image, bbox, expandMax=200.0)
+            image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
+            image, bbox           = flipHorizontal(image, bbox, p = 0.5)
+            
+        else:
+            image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
+
+
+        if self.mode == 'train':
+            return (image/127.5) -1.0,  bbox, classes
+        else:
+            return (image/127.5) -1.0, self._label_encoder._encode_sample(bbox, classes), inferMetric
+
+    def _preprocess_after_batch(self, ds1, ds2, ds3, ds4):
+        inner_p = tf.random.uniform([], minval=0, maxval=1)
+
+        image, bbox, classes = mosaic(ds1, ds2, ds3, ds4)
+
+        #return image, self._label_encoder._encode_sample(bbox, classes)
+        return image, bbox, classes
 
     def _build_dataset(self):
         if self.mode == 'train' or self.mode == 'bboxtest':

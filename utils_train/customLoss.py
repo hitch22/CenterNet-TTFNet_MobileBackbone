@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from absl import app, logging, flags
+from absl import logging
 
 _policy = tf.keras.mixed_precision.global_policy()
 
