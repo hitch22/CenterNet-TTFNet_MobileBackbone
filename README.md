@@ -12,7 +12,7 @@ Model | Lr schedule  | max learning rate | BatchSize | total epochs | kernel reg
 MobileNetV3Large TTFNet | CosineDecay with warmup | 5e-3 | 64 | 300 | 3e-5 | Gradient Centralization SGDM | Focal, DIOU |320x320| FP16 | 1.8 | 1.3 | 23.1 |
 
 ## Inference Examples
-<img width="49%" src="https://user-images.githubusercontent.com/89026839/179469473-ab768561-0964-4ec7-ad0b-ebf0c1033570.png"/> <img width="49%" src="https://user-images.githubusercontent.com/89026839/179469556-f5801692-9c5b-43b8-8837-2645b2b2a152.png"/>
+<img width="49%" src="https://user-images.githubusercontent.com/89026839/182117434-206eb018-9abf-4f24-b4fb-522c3e971c6c.png"/> <img width="49%" src="https://user-images.githubusercontent.com/89026839/182117529-4a7cb8aa-ff5d-4bf1-8d7a-3bde7b7448c6.png"/>
 
 ## Reference
 1. Searching for MobileNetV3 https://arxiv.org/abs/1905.02244
