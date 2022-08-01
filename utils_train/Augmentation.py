@@ -204,25 +204,15 @@ def colorJitter(image, p = 1.0):
     if tf.random.uniform([], minval=0, maxval=1) > p:
         return image
 
-    if tf.random.uniform([], minval=0, maxval=1) < p:
-        p *= p
-        image = tf.image.random_brightness(image/255.0, 0.2)*255.0
-        image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+    
+    image = tf.cast(image, tf.float32)/255.0
 
-    if tf.random.uniform([], minval=0, maxval=1) < p:
-        p *= p
-        image = tf.image.random_contrast(image/255.0, 0.8, 1.25)*255.0
-        image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
-
-    if tf.random.uniform([], minval=0, maxval=1) < p:
-        p *= p
-        image = tf.image.random_hue(image/255.0, 0.05)*255.0
-        image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
-
-    if tf.random.uniform([], minval=0, maxval=1) < p:
-        image = tf.image.random_saturation(image/255.0, 0.5, 1.5)*255.0
-        image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
-    return image
+    image = tf.image.random_brightness(image, 0.2)
+    image = tf.image.random_contrast(image, 0.8, 1.25)
+    image = tf.image.random_hue(image, 0.05)
+    image = tf.image.random_saturation(image, 0.5, 1.5)
+    
+    return tf.clip_by_value(image, 0.0, 1.0)*255.0
 
 
 

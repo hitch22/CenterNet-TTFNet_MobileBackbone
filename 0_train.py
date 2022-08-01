@@ -53,12 +53,7 @@ def main(_argv):
         config = json.load(config_file)
     
     logging.warning('Training dataset: {}'.format(FLAGS.dataset.upper()))
-    if FLAGS.dataset == 'pascal':
-        config['training_config']['num_classes'] = 20
-        train_dataset = Dataset_Pascal(config, mode = 'train')
-        test_dataset = Dataset_Pascal(config, mode = 'validation')
-        val_file = "data/pascal_test2007.json"
-    elif FLAGS.dataset == 'coco':
+    if FLAGS.dataset == 'coco':
         config['training_config']['num_classes'] = 80
         train_dataset = Dataset_COCO(config, mode = 'train')
         test_dataset = Dataset_COCO(config, mode = 'validation')
@@ -75,10 +70,11 @@ def main(_argv):
 
     with strategy.scope():
         model = ModelBuilder(config = config)
+        print(model)
         #model = tf.keras.models.load_model("logs/MobileNetV3_FPN_TTFNet/weights/_epoch270_mAP0.215")
         #model.load_weights("logs/MobileNetV3_FPN_TTFNet/weights/_epoch270_mAP0.215")
         model.compile(loss=loss_fn, optimizer=optimizer, weighted_metrics=[])
-        print(model)
+        
         
     model.fit(train_dataset.dataset,
                 epochs=config["training_config"]["epochs"],

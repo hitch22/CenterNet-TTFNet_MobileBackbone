@@ -8,14 +8,22 @@ def _TTFNetHeatmapHead(x, filters, **config_dict):
 	classNum = config_dict["classNum"]
 	config_dict.pop('classNum')
 
+	conf_dict_last = config_dict.copy()
+	config_dict['use_bias'] = False
+	config_dict.pop('bias_initializer')
+
 	x=_SeparableConv(x, filters=filters, kernel_size=3, strides=1, prefix=prefix+"Sep/", **config_dict)
-	x=_Conv(x, filters=classNum, kernel_size=1, strides=1, normalization=None, activation=None, prefix=prefix+"Conv/", **config_dict)
+	x=_Conv(x, filters=classNum, kernel_size=1, strides=1, normalization=None, activation=None, prefix=prefix+"Conv/", **conf_dict_last)
 	return x
 
 def _TTFNetSizeHead(x, filters, **config_dict):
 	prefix="SizeHead/"
+	conf_dict_last = config_dict.copy()
+	config_dict.pop('bias_initializer')
+	config_dict['use_bias'] = False
+
 	x=_SeparableConv(x, filters=filters, kernel_size=3, strides=1, prefix=prefix+"Sep/", **config_dict)
-	x=_Conv(x, filters=4, kernel_size=1, strides=1, normalization=None, activation=None, prefix=prefix+"Conv/", **config_dict)
+	x=_Conv(x, filters=4, kernel_size=1, strides=1, normalization=None, activation=None, prefix=prefix+"Conv/", **conf_dict_last)
 	return x
 
 def TTFNet(x, config=None):

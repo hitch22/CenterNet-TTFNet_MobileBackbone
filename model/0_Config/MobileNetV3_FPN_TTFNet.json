@@ -8,7 +8,7 @@
             "name":"MobileNetV3",
             "width_multiplier": 1.0,
             "modelSize":"large",
-            "regularization":1e-5,
+            "regularization":3e-5,
             "isFreeze":false
         },
         "neck":
@@ -16,7 +16,7 @@
             "aggregation":"add",
             "isLite": true,
             "filters": [64, 32, 24, 24],
-            "regularization":1e-5,
+            "regularization":3e-5,
             "isFreeze":false
         },
         "head":
@@ -24,7 +24,7 @@
             "name": "TTFNet",
             "isLite": true,
             "filters": 256,
-            "regularization":1e-5,
+            "regularization":3e-5,
             "isFreeze":false
         } 
     },
