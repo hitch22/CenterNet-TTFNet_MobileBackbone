@@ -1,5 +1,5 @@
 #  CenterNet-TTFNet_MobileBackbone
-Tensorflow2 and Keras implementation of CenterNet and TTFNet
+Tensorflow2 and Keras implementation of CenterNet and TTFNet. I didn't use deformable convolution layers for fast inference, I replaced it with normal convolution layers. 
 
 ## Update
 1. [22/07/2] Update: Concat Path Aggregation in FPN and Simple Neck UPUP
