@@ -26,7 +26,7 @@ flags.DEFINE_string(
 
 flags.DEFINE_string(
     name='model',
-    default='MobileNetV3_FPN_TTFNet',
+    default='MobileDet_FPN_TTFNet',
     help='Model to train')
 
 FLAGS = flags.FLAGS
@@ -70,12 +70,11 @@ def main(_argv):
 
     with strategy.scope():
         model = ModelBuilder(config = config)
-        print(model)
         #model = tf.keras.models.load_model("logs/MobileNetV3_FPN_TTFNet/weights/_epoch270_mAP0.215")
         #model.load_weights("logs/MobileNetV3_FPN_TTFNet/weights/_epoch270_mAP0.215")
         model.compile(loss=loss_fn, optimizer=optimizer, weighted_metrics=[])
         
-        
+    print(model)    
     model.fit(train_dataset.dataset,
                 epochs=config["training_config"]["epochs"],
                 #steps_per_epoch = len(train_dataset),
