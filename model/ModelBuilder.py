@@ -157,13 +157,17 @@ class ModelBuilder(tf.keras.Model):
     def __repr__(self, table=True):
         print_str=''
         if table:
-            print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7s\n'%( 'Layer Name', 'Input Shape', 'Output Shape', 'Kernel Size', 'Filters', 'Strides', 'FLOPs')
+            print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7s| %7s\n'%( 'Layer Name', 'Input Shape', 'Output Shape', 'Kernel Size', 'Filters', 'Strides', 'FLOPs', 'Params')
             print_str += '-'*170+'\n'
+        
+        scale_flops = 1e6
+        scale_params = 1e3
         t_flops = 0
+        t_params = 0
 
         for l in self.layers:
             _layername = str(l).lower()
-            o_shape, i_shape, strides, ks, filters = ['', '', ''], ['', '', ''], '', '', ''
+            o_shape, i_shape, strides, ks, filters, params = ['', '', ''], ['', '', ''], '', '', '', 0
             flops = 0
             name = l.name
 
@@ -175,11 +179,22 @@ class ModelBuilder(tf.keras.Model):
                 o_shape = l.output.get_shape()[1:4].as_list()
 
             elif 'add' in _layername or 'multiply' in _layername or 'maximum' in _layername or 'concatenate' in _layername:
-                i_shape = [l_input.get_shape()[1:].as_list() for l_input in l.input]
+                try:
+                    i_shape = [l_input.get_shape()[1:].as_list() for l_input in l.input]
+                except:
+                    length = 2
+                    i_shape = []
+                    for idx in range(length):
+                        i_shape.append(l.input[idx].get_shape()[1:].as_list())
                 o_shape = l.output.get_shape()[1:].as_list()                
                 flops = (len(i_shape) - 1)
                 for i in i_shape[0]:
                     flops *= i
+
+            elif 'upsampling' in _layername:
+                i_shape = l.input.get_shape()[1:].as_list()
+                o_shape = l.output.get_shape()[1:].as_list()
+                flops = i_shape[0]*i_shape[1]*o_shape[0]*o_shape[1]
 
             elif 'average' in _layername and 'pool' not in _layername:
                 i_shape = l.input[0].get_shape()[1:].as_list() + [2]
@@ -201,7 +216,7 @@ class ModelBuilder(tf.keras.Model):
             elif 'batchnormalization' in _layername:
                 i_shape = l.input.get_shape()[1:].as_list()
                 o_shape = l.output.get_shape()[1:].as_list()
-
+                params=4*o_shape[2]
                 flops = 1
                 for i in range(len(i_shape)):
                     flops *= i_shape[i]
@@ -248,29 +263,33 @@ class ModelBuilder(tf.keras.Model):
                 filters = l.filters if l.filters else 1
                 i_shape = l.input.get_shape()[1:].as_list()
                 o_shape = l.output.get_shape()[1:].as_list()
-
                 if 'separableconv2d' in _layername:
+                    params = ks[0]*ks[1]*i_shape[2]+i_shape[2]*filters+filters if l.bias is not None else ks[0]*ks[1]*i_shape[2]+i_shape[2]*filters
                     flops = 2*(filters+ks[0]*ks[1])*(i_shape[2]*(o_shape[0])*(o_shape[1]))
                 else:
+                    params = filters*ks[0]*ks[1]*i_shape[2]+filters if l.bias is not None else filters*ks[0]*ks[1]*i_shape[2]
                     flops = 2*(filters*ks[0]*ks[1])*(i_shape[2]*(o_shape[0])*(o_shape[1]))
+
             else:
-                print("TP: ", l)
+                i_shape = l.input.get_shape()[1:].as_list()
+                o_shape = l.output.get_shape()[1:].as_list()
+                print("Not Implemented Layer: ", l)
 
             t_flops += flops
+            t_params +=params
             if table:
                 if isinstance(i_shape[0], list):
-                    print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7.2f[M]\n'%(name, str(i_shape[0]), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
+                    print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %6.2f[M] | %6.2f[K]\n'%(name, str(i_shape[0]), str(o_shape), str(ks), str(filters), str(strides), flops/scale_flops, params/scale_params)
                     for idx in range(len(i_shape)-1):
                         print_str += '%44s | \n'%(str(i_shape[idx+1]))
                 else:
-                    print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %7.2f[M]\n'%(name, str(i_shape), str(o_shape), str(ks), str(filters), str(strides), flops/1e6)
+                    print_str += '%25s | %16s | %20s | %10s | %6s | %6s | %6.2f[M] | %6.2f[K]\n'%(name, str(i_shape), str(o_shape), str(ks), str(filters), str(strides), flops/scale_flops, params/scale_params)
 
         trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.trainable_weights])
         none_trainable_params = sum([np.prod(w.get_shape().as_list()) for w in self.non_trainable_weights])
         total_params = trainable_params+none_trainable_params
 
         print_str += '-'*170+'\n'
-        print_str += '         Total Params: %6.3f[M]  ' % (total_params/1e6)+'Trainable Params: %6.3f[M]  ' % (trainable_params/1e6)+ \
-        'Total FLOPS: %6.3f[G]  ' % (t_flops/1e9)
+        print_str += '         Total Params: {:6.2f}[M]  Trainable Params: {:6.2f}[M]  Total FLOPS: {:6.2f}[G]'.format(total_params/scale_params/1e3, trainable_params/scale_params/1e3, t_flops/scale_flops/1e3)
         return print_str
 
