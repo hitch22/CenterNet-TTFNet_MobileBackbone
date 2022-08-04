@@ -1,4 +1,4 @@
-#  CenterNet-TTFNet_MobileBackbone
+#  CenterNet and TTFNet with MobileBackbone
 Tensorflow2 and Keras implementation of CenterNet and TTFNet. I didn't use deformable convolution layers for fast inference, I replaced it with normal convolution layers. 
 
 ## Update
