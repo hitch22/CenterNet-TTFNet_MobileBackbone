@@ -204,7 +204,6 @@ def colorJitter(image, p = 1.0):
     if tf.random.uniform([], minval=0, maxval=1) > p:
         return image
 
-    
     image = tf.cast(image, tf.float32)/255.0
 
     image = tf.image.random_brightness(image, 0.2)

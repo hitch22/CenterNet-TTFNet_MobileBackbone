@@ -290,6 +290,6 @@ class ModelBuilder(tf.keras.Model):
         total_params = trainable_params+none_trainable_params
 
         print_str += '-'*170+'\n'
-        print_str += '         Total Params: {:6.2f}[M]  Trainable Params: {:6.2f}[M]  Total FLOPS: {:6.2f}[G]'.format(total_params/scale_params/1e3, trainable_params/scale_params/1e3, t_flops/scale_flops/1e3)
+        print_str += '         Total Params: {:6.2f}[M]  Trainable Params: {:6.2f}[M]  Total FLOPs: {:6.2f}[G]'.format(total_params/scale_params/1e3, trainable_params/scale_params/1e3, t_flops/scale_flops/1e3)
         return print_str
 

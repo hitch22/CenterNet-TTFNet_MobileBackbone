@@ -13,6 +13,7 @@ class DatasetBuilder():
         self._label_encoder = LabelEncoder(config)
         self._target_size = config["model_config"]["target_size"]
         self._batch_size = config["training_config"]["batch_size"]
+
         self.mode = mode
         self._build_dataset()
     
@@ -34,9 +35,7 @@ class DatasetBuilder():
             image, bbox, classes  = randomCrop(image, bbox, classes, p = 0.75)
             image, bbox           = randomExpand(image, bbox, expandMax=200.0)
             image, bbox           = randomResize(image, bbox, self._target_size, self._target_size, p = 0.0)
-            #image                 = randomCutout(image)
             image, bbox           = flipHorizontal(image, bbox, p = 0.5)
-            #image                 = randomGaussian(image)
             image                 = colorJitter(image, p = 0.7)
 
         else:
